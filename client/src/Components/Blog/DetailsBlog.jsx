@@ -97,7 +97,7 @@ const DetailsBlog = () => {
 
       // Send request to backend
       const response = await axios.put(
-        `https://blog-editor-serverr.vercel.app/blogs`,
+        `https://blogs-editor-server.vercel.app/blogs`,
         updatedData
       );
 
@@ -135,7 +135,7 @@ const DetailsBlog = () => {
     };
     try {
       const response = await axios.post(
-        "https://blog-editor-serverr.vercel.app/comments",
+        "https://blogs-editor-server.vercel.app/comments",
         commentData
       );
       if (response.status === 200) {

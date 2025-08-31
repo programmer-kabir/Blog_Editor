@@ -45,7 +45,7 @@ const BlogCategory = () => {
         >
           {CategoryData.map((data, index) => (
             <SwiperSlide key={index}>
-              <Link to={`/blog/category/${data.title}`}>
+              <Link to={`/blogs/category/${data.title}`}>
                 <div className="group mx-auto rounded-md border flex flex-col items-center p-5 w-[200px] hover:shadow-lg transition-shadow duration-300 hover:border-[#60A5FA]">
                   <img
                     src={data.Image}

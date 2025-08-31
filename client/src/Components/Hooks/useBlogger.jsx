@@ -12,7 +12,7 @@ const useBlogger = () => {
     enabled: !loading,
     queryFn: async () => {
       const res = await axiosSecure.get(`/users/blogger/${user?.email}`);
-      return res.data.blogger;
+      return res?.data?.blogger;
     },
   });
 //   console.log(isAdmin);

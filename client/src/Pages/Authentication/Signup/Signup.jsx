@@ -53,7 +53,7 @@ const Signup = () => {
             const user = result.user;
             updateUserProfile(data.name, photo).then((response) => {
               axios
-                .post("https://blog-editor-serverr.vercel.app/users", finalData)
+                .post("https://blogs-editor-server.vercel.app/users", finalData)
                 .then((data) => {
                   if (data.data.insertedId) {
                     toast.success("Register Successfully");

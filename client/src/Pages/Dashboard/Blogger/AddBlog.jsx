@@ -127,7 +127,7 @@ const AddBlog = () => {
 
       // Send blog data to the server
       axios
-        .post("https://blog-editor-serverr.vercel.app/blogs", blogData)
+        .post("https://blogs-editor-server.vercel.app/blogs", blogData)
         .then((response) => {
           console.log(response.data);
           if (response.data.insertedId) {

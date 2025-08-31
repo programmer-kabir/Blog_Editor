@@ -81,7 +81,7 @@ const DetailsBlog = () => {
 
       // Update the blog on the server
       const response = await axios.put(
-        `https://blog-editor-serverr.vercel.app/blogs`,
+        `https://blogs-editor-server.vercel.app/blogs`,
         updatedData
       );
       // console.log("Blog liked successfully:", response.data);
@@ -108,7 +108,7 @@ const DetailsBlog = () => {
     try {
       // Send a POST request to save the comment in the backend
       const response = await axios.post(
-        "https://blog-editor-serverr.vercel.app/comments",
+        "https://blogs-editor-server.vercel.app/comments",
         commentData
       );
 

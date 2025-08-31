@@ -3,9 +3,10 @@ import axios from "axios";
 export const fetchUsers = createAsyncThunk("users/fetchUsers", async () => {
   try {
     const response = await axios.get(
-      "https://blog-editor-serverr.vercel.app/users"
+      "https://blogs-editor-server.vercel.app/users"
     );
-    return response.data;
+    console.log(response.data);
+    return response?.data;
   } catch (error) {
     throw error;
   }

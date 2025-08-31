@@ -8,7 +8,7 @@ const useAxiosSecure = () => {
   // console.log(logOut);
   const navigate = useNavigate();
   const axiosSecure = axios.create({
-    baseURL: "https://blog-editor-serverr.vercel.app",
+    baseURL: "https://blogs-editor-server.vercel.app",
   });
 
   useEffect(() => {

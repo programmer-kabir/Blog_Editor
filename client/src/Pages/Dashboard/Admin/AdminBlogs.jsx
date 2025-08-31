@@ -28,7 +28,7 @@ const AdminBlogs = () => {
     const data = { blogId, status: "approved" };
     console.log(data);
     axios
-      .put("https://blog-editor-serverr.vercel.app/blogs", data)
+      .put("https://blogs-editor-server.vercel.app/blogs", data)
       .then((response) => {
         console.log(response.data);
         if (response.data.modifiedCount === 1) {
@@ -51,7 +51,7 @@ const AdminBlogs = () => {
     const data = { blogId: selectedBlog, status: "reject", rejectReason };
     console.log(data);
     axios
-      .put("https://blog-editor-serverr.vercel.app/blogs", data)
+      .put("https://blogs-editor-server.vercel.app/blogs", data)
       .then((response) => {
         console.log(response.data);
         if (response.data.modifiedCount === 1) {

@@ -30,7 +30,7 @@ const ShowComments = ({ id }) => {
     };
     // console.log(data);
     axios
-      .put("https://blog-editor-serverr.vercel.app/comments", data)
+      .put("https://blogs-editor-server.vercel.app/comments", data)
       .then((response) => {
         // console.log(response.data);
         toast.success(response?.data?.message);
@@ -47,7 +47,7 @@ const ShowComments = ({ id }) => {
     };
 
     axios
-      .delete("https://blog-editor-serverr.vercel.app/comments", { data })
+      .delete("https://blogs-editor-server.vercel.app/comments", { data })
       .then((response) => {
         // console.log(response.data);
         toast.success(response?.data?.message);

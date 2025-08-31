@@ -29,6 +29,7 @@ const Signin = () => {
   } = useForm();
 
   const onSubmit = (data) => {
+    console.log(data.email, data.password);
     SingInUser(data.email, data.password)
     .then(result =>{
       const user = result.user
@@ -44,9 +45,10 @@ const Signin = () => {
   ];
 // Copy Handler
 const handleCopy = (text, label) => {
-    navigator.clipboard.writeText(text)
-      .then(() => toast.success(`${label} copied to clipboard!`))
-      .catch((err) => console.error("Failed to copy: ", err));
+  navigator.clipboard.writeText(text)
+  .then(() => toast.success(`${label} copied to clipboard!`))
+  .catch((err) => console.error("Failed to copy: ", err));
+  console.log(text);
   };
   return (
     <section className="mt-[120px] px-2">
@@ -166,7 +168,7 @@ const handleCopy = (text, label) => {
                   <div className="text-base flex items-center justify-between">
                     <p>Email: {credential.email}</p>
                     <button
-                      onClick={() => handleCopy(email, "Email")}
+                      onClick={() => handleCopy(credential?.email, "Email")}
                       className="text-[#1677ff] flex items-center gap-1"
                     >
                       <IoMdCopy size={20} className="rotate-180" /> Copy Email
@@ -177,7 +179,7 @@ const handleCopy = (text, label) => {
                   <div className="text-base flex items-center justify-between">
                     <p>Password: {credential.password}</p>
                     <button
-                      onClick={() => handleCopy(password, "Password")}
+                      onClick={() => handleCopy(credential?.password, "Password")}
                       className="text-[#1677ff] flex items-center gap-1"
                     >
                       <IoMdCopy size={20} className="rotate-180" /> Copy

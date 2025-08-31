@@ -36,7 +36,7 @@ const AllBloggers = () => {
         // });
         console.log(email);
         axios
-          .delete(`https://blog-editor-serverr.vercel.app/users/${email}`)
+          .delete(`https://blogs-editor-server.vercel.app/users/${email}`)
           .then((res) => {
             console.log(res.data);
             toast.success(res.data.message);

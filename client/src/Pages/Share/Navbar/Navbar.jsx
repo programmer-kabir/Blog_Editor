@@ -1,17 +1,23 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import logo from "../../../assets/Logo/logo1.png";
 import { LuLogIn } from "react-icons/lu";
 import { FaBarsStaggered, FaPlus } from "react-icons/fa6";
 import { MdLogout } from "react-icons/md";
 import useAuth from "../../../Components/Hooks/useAuth";
-import useAdmin from "../../../Components/Hooks/useAdmin";
-import useBlogger from "../../../Components/Hooks/useBlogger";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchUsers } from "../../Redux/Users/userSlice";
 const Navbar = () => {
   const { logOut, user } = useAuth();
-  const [isAdmin] = useAdmin();
-  const [isBlogger] = useBlogger();
-// console.log(isBlogger);
+  const dispatch = useDispatch()
+const { isUsersLoading, Users, isUsersError } = useSelector(
+  (state) => state.Users
+);
+
+  useEffect(()=>{
+    dispatch(fetchUsers())
+  },[dispatch])
+const currentUser = Users.find(u => u?.email === user?.email)
   const [isNavOpen, setIsNavOpen] = useState(false);
   const toggleSidebar = () => {
     setIsNavOpen(!isNavOpen);
@@ -66,7 +72,7 @@ const Navbar = () => {
             About Us
           </NavLink>
           {
-            isAdmin &&  <NavLink
+            currentUser?.role === "admin" &&  <NavLink
             to="/dashboard/admin"
             className={({ isActive }) =>
               isActive
@@ -78,7 +84,7 @@ const Navbar = () => {
           </NavLink>
           }
           {
-            isBlogger &&  <NavLink
+            currentUser?.role === "blogger" && <NavLink
             to="/dashboard/blogger"
             className={({ isActive }) =>
               isActive
@@ -172,7 +178,7 @@ const Navbar = () => {
             About Us
           </NavLink>
           {
-            isAdmin &&  <NavLink
+            currentUser?.role === "admin" &&  <NavLink
             to="/dashboard/admin"
             className={({ isActive }) =>
               isActive
@@ -184,7 +190,7 @@ const Navbar = () => {
           </NavLink>
           }
           {
-            isBlogger &&  <NavLink
+            currentUser?.role ==="blogger" &&  <NavLink
             to="/dashboard/blogger"
             className={({ isActive }) =>
               isActive

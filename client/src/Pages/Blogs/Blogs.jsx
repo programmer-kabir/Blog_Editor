@@ -11,11 +11,9 @@ import { LuBookMarked, LuLogIn } from "react-icons/lu";
 import { Link, NavLink, Outlet, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchBlogs } from "../Redux/Blogs/blogSlice";
-import BlogCard from "../../Components/Design/BlogCard";
-import useAdmin from "../../Components/Hooks/useAdmin";
-import useBlogger from "../../Components/Hooks/useBlogger";
 import useAuth from "../../Components/Hooks/useAuth";
 import { MdLogout } from "react-icons/md";
+import { fetchUsers } from "../Redux/Users/userSlice";
 
 const CategoryData = [
   { title: "programming", icon: <IoIosCode />, link: "programming" },
@@ -30,21 +28,25 @@ const CategoryData = [
 ];
 
 const Blogs = () => {
+
   const { name } = useParams();
-  const [isAdmin] = useAdmin();
-  const [isBlogger] = useBlogger();
+
   const {user,logOut} = useAuth()
   const [activeIndex, setActiveIndex] = useState(null);
   const [categoryCounts, setCategoryCounts] = useState({});
   const dispatch = useDispatch();
-  const { isBlogLoading, Blogs, isBlogError } = useSelector(
-    (state) => state.Blogs
+  const { isBlogLoading, Blogs, isBlogError } = useSelector( (state) => state.Blogs)
+  const { isUsersLoading, Users, isUsersError } = useSelector(
+    (state) => state.Users
   );
   useEffect(() => {
     dispatch(fetchBlogs());
+    dispatch(fetchUsers());
   }, [dispatch, name]);
+
   const filteredBlogs = Blogs.filter((blog) => blog.status === "approved");
-  // console.log(filteredBlogs);
+  const currentUser = Users.find(user => user?.email === user?.email)
+console.log(currentUser?.role);
   useEffect(() => {
     const counts = {};
     filteredBlogs.forEach((blog) => {
@@ -152,7 +154,7 @@ const Blogs = () => {
 
           <div className="text-white flex items-center gap-4">
             <div className="md:flex text-black gap-2 hidden ">
-              {isAdmin && (
+              {currentUser?.role ==="admin" && (
                 <NavLink
                   to="/dashboard/admin"
                   className={({ isActive }) =>
@@ -164,7 +166,7 @@ const Blogs = () => {
                   Dashboard
                 </NavLink>
               )}
-              {isBlogger && (
+              {currentUser?.role === "blogger" && (
                 <NavLink
                   to="/dashboard/blogger"
                   className={({ isActive }) =>
@@ -206,7 +208,7 @@ const Blogs = () => {
 
           <div className="text-white flex items-center gap-4">
             <div className="flex text-black gap-2  ">
-              {isAdmin && (
+              {currentUser?.role === "admin" && (
                 <NavLink
                   to="/dashboard/admin"
                   className={({ isActive }) =>
@@ -218,7 +220,7 @@ const Blogs = () => {
                   Dashboard
                 </NavLink>
               )}
-              {isBlogger && (
+              {currentUser?.role === "blogger" && (
                 <NavLink
                   to="/dashboard/blogger"
                   className={({ isActive }) =>
