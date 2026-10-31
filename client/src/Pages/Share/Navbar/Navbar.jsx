@@ -16,8 +16,9 @@ const { isUsersLoading, Users, isUsersError } = useSelector(
 
   useEffect(()=>{
     dispatch(fetchUsers())
-  },[dispatch])
+  },[user])
 const currentUser = Users.find(u => u?.email === user?.email)
+// console.log(currentUser?.role);
   const [isNavOpen, setIsNavOpen] = useState(false);
   const toggleSidebar = () => {
     setIsNavOpen(!isNavOpen);
