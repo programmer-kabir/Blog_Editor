@@ -1,96 +1,116 @@
 import React, { useEffect, useRef, useState } from "react";
 import CountUp from "react-countup";
+import { Link } from "react-router-dom";
+import { LuUsers, LuBookOpen, LuGlobe, LuArrowRight } from "react-icons/lu";
+
+const stats = [
+  {
+    icon: LuUsers,
+    count: 25,
+    suffix: "+",
+    label: "Expert Authors",
+    desc: "Passionate contributors sharing domain knowledge.",
+  },
+  {
+    icon: LuGlobe,
+    count: 50,
+    suffix: "K+",
+    label: "Monthly Readers",
+    desc: "Global developers & learners accessing our stories.",
+  },
+  {
+    icon: LuBookOpen,
+    count: 1200,
+    suffix: "+",
+    label: "Published Articles",
+    desc: "Curated guides, tutorials, and deep-dive essays.",
+  },
+];
 
 const CompanyInfo = () => {
   const [isVisible, setIsVisible] = useState(false);
-  const elementRef = useRef(null);
+  const sectionRef = useRef(null);
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsVisible(true);
-          observer.disconnect(); // Stop observing after the first intersection
+          observer.disconnect();
         }
       },
-      { threshold: 0.5 } // Trigger when 50% of the element is visible
+      { threshold: 0.2 }
     );
 
-    if (elementRef.current) {
-      observer.observe(elementRef.current);
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
     }
 
     return () => {
-      if (elementRef.current) {
-        observer.unobserve(elementRef.current);
+      if (sectionRef.current) {
+        observer.unobserve(sectionRef.current);
       }
     };
   }, []);
 
   return (
-    <section className="md:flex pt-10 gap-10">
-      <div className="md:w-1/2">
-        <h1 className="text-2xl text-[#000000] font-bold  sm:text-[26px]">
-          Work with Blog Editor
-        </h1>
-        <p className="mt-4 text-base  text-justify text-[#1F2937]">
-          At BlogPlex, we are committed to creating a vibrant community of
-          content creators and readers. Join our team to contribute to a
-          platform that reaches thousands of visitors daily, and help shape the
-          future of content creation and consumption.
-        </p>
-      </div>
-
-      <div className="md:w-1/2   flex flex-col md:flex-row pt-10 md:pt-0 justify-between gap-7">
-        <div
-          ref={elementRef}
-          className="rounded-lg border w-full shadow-sm flex flex-col items-center p-4 group"
-        >
-          <img
-            className="group-hover:scale-90 transition-all duration-75"
-            src="https://i.ibb.co.com/G9zHYX2/staff.png"
-            alt=""
-          />
-          <h2 className="mt-4 text-2xl font-semibold">
-            {isVisible && (
-              <CountUp start={0} end={25} duration={1} suffix=" +" />
-            )}
+    <section ref={sectionRef} className="py-12 border-t border-slate-150">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+        
+        {/* Left Column: Call to Action to Write */}
+        <div className="lg:col-span-5 space-y-4">
+          <span className="px-3 py-1 rounded-full bg-brand-light text-brand text-xs font-semibold">
+            Our Growing Ecosystem
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Built for Readers, <br className="hidden sm:inline" />
+            Empowered by Writers
           </h2>
-          <p className="mt-2 text-base text-[#1F2937] font-mono">Total Employees</p>
+          <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+            Blog Editor brings together thoughtful creators and curious readers. Join our creator network, share your expertise, and build an audience with a worldwide reach.
+          </p>
+
+          <div className="pt-2">
+            <Link
+              to="/dashboard/blogger/add-blog"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white bg-slate-900 hover:bg-slate-800 transition-colors shadow-sm"
+            >
+              <span>Join as a Writer</span>
+              <LuArrowRight />
+            </Link>
+          </div>
         </div>
 
-        <div
-          ref={elementRef}
-          className="rounded-lg border w-full shadow-sm flex flex-col items-center p-4 group"
-        >
-          <img
-            className="group-hover:scale-90 transition-all duration-75"
-            src="https://i.ibb.co.com/fYZmZrn/audience.png"
-            alt=""
-          />
-          <h2 className="mt-4  text-2xl font-semibold">
-            {isVisible && (
-              <CountUp start={0} end={1000} duration={3} suffix=" +" />
-            )}
-          </h2>
-          <p className="mt-2 text-base text-[#1F2937] font-mono">Total Visitors</p>
+        {/* Right Column: Live Counters */}
+        <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-5">
+          {stats.map((stat, idx) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={idx}
+                className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-card hover:shadow-elevated hover:border-brand/30 transition-all duration-300 text-center flex flex-col items-center justify-center group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-brand-light text-brand flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Icon className="text-2xl" />
+                </div>
+                <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                  {isVisible ? (
+                    <CountUp start={0} end={stat.count} duration={2.5} suffix={stat.suffix} />
+                  ) : (
+                    `0${stat.suffix}`
+                  )}
+                </h3>
+                <p className="text-xs font-bold text-slate-700 mt-1 uppercase tracking-wider">
+                  {stat.label}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                  {stat.desc}
+                </p>
+              </div>
+            );
+          })}
         </div>
 
-        <div
-          ref={elementRef}
-          className="rounded-lg border w-full shadow-sm flex flex-col items-center p-4 group"
-        >
-          <img
-            className="group-hover:scale-90 transition-all duration-75"
-            src="https://i.ibb.co.com/NV2CprC/christmas-card.png"
-            alt=""
-          />
-          <h2 className="mt-4 text-2xl font-semibold">
-            {isVisible && (
-              <CountUp start={0} end={3000} duration={4} suffix=" +" />
-            )}
-          </h2>
-          <p className="mt-2 text-base text-[#1F2937] font-mono">Total Subscribers</p>
-        </div>
       </div>
     </section>
   );

@@ -1,351 +1,441 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
+import { Link, NavLink, Outlet, useParams, useLocation } from "react-router-dom";
 import logo from "../../assets/Logo/logo1.png";
 import { IoIosCode, IoMdFitness } from "react-icons/io";
 import { GiProcessor } from "react-icons/gi";
 import { TfiWorld } from "react-icons/tfi";
 import { IoBicycleOutline, IoHomeOutline } from "react-icons/io5";
 import { RiGraduationCapLine } from "react-icons/ri";
-import { FaBarsStaggered, FaPlus, FaRegLifeRing } from "react-icons/fa6";
+import { FaRegLifeRing } from "react-icons/fa6";
 import { PiBowlFoodLight, PiDressThin } from "react-icons/pi";
-import { LuBookMarked, LuLogIn } from "react-icons/lu";
-import { Link, NavLink, Outlet, useParams } from "react-router-dom";
+import { LuLayoutDashboard, LuPenSquare, LuSearch } from "react-icons/lu";
+import { HiOutlineBars3BottomRight, HiXMark } from "react-icons/hi2";
+import { MdLogout } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchBlogs } from "../Redux/Blogs/blogSlice";
-import useAuth from "../../Components/Hooks/useAuth";
-import { MdLogout } from "react-icons/md";
 import { fetchUsers } from "../Redux/Users/userSlice";
+import { fetchCategories } from "../Redux/Categories/categorySlice";
+import useAuth from "../../Components/Hooks/useAuth";
+import Loader from "../../Components/Loader/Loader";
+import InstantSearchModal from "../../Components/Search/InstantSearchModal";
 
-const CategoryData = [
-  { title: "programming", icon: <IoIosCode />, link: "programming" },
-  { title: "technology", icon: <GiProcessor />, link: "technology" },
-  { title: "devops", icon: <TfiWorld />, link: "devops" },
-  { title: "travel", icon: <IoBicycleOutline />, link: "travel" },
-  { title: "education", icon: <RiGraduationCapLine />, link: "education" },
-  { title: "lifestyle", icon: <FaRegLifeRing />, link: "lifestyle" },
-  { title: "fitness", icon: <IoMdFitness />, link: "fitness" },
-  { title: "fashion", icon: <PiDressThin />, link: "fashion" },
-  { title: "food", icon: <PiBowlFoodLight />, link: "food" },
+const fallbackCategoryData = [
+  { title: "Programming", icon: "💻", link: "programming" },
+  { title: "Technology", icon: "⚡", link: "technology" },
+  { title: "DevOps & Cloud", icon: "☁️", link: "devops" },
+  { title: "Travel & Tours", icon: "✈️", link: "travel" },
+  { title: "Education", icon: "🎓", link: "education" },
+  { title: "Lifestyle", icon: "🌿", link: "lifestyle" },
+  { title: "Fitness & Health", icon: "💪", link: "fitness" },
+  { title: "Fashion", icon: "👗", link: "fashion" },
+  { title: "Food & Drinks", icon: "🍔", link: "food" },
 ];
 
 const Blogs = () => {
-
   const { name } = useParams();
-
-  const {user,logOut} = useAuth()
-  const [activeIndex, setActiveIndex] = useState(null);
+  const location = useLocation();
+  const { user, logOut } = useAuth();
   const [categoryCounts, setCategoryCounts] = useState({});
+  const [isNavOpen, setIsNavOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const dispatch = useDispatch();
-  const { isBlogLoading, Blogs, isBlogError } = useSelector( (state) => state.Blogs)
-  const { isUsersLoading, Users, isUsersError } = useSelector(
-    (state) => state.Users
-  );
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
+
+  const { Blogs = [] } = useSelector((state) => state.Blogs);
+  const { Users = [] } = useSelector((state) => state.Users);
+  const { categories = [] } = useSelector((state) => state.Categories);
+
   useEffect(() => {
     dispatch(fetchBlogs());
-    dispatch(fetchUsers());
-  }, [dispatch, name]);
+    if (Users.length === 0) {
+      dispatch(fetchUsers());
+    }
+    if (categories.length === 0) {
+      dispatch(fetchCategories());
+    }
+  }, [dispatch, name, Users.length, categories.length]);
 
-  const filteredBlogs = Blogs.filter((blog) => blog.status === "approved");
-  const currentUser = Users.find(user => user?.email === user?.email)
-console.log(currentUser?.role);
-  useEffect(() => {
-    const counts = {};
-    filteredBlogs.forEach((blog) => {
-      if (counts[blog.category]) {
-        counts[blog.category] += 1;
-      } else {
-        counts[blog.category] = 1;
+  const dynamicCategories = [
+    { title: "All Articles", icon: <IoHomeOutline />, link: "" },
+    ...(categories.length > 0
+      ? categories.map((c) => ({
+          title: c.label,
+          icon: c.icon || "📌",
+          link: c.title,
+        }))
+      : fallbackCategoryData),
+  ];
+
+  const approvedBlogs = Blogs.filter((blog) => blog.status === "approved");
+  const currentUser = Users.find((u) => u?.email === user?.email);
+
+  const popularTags = React.useMemo(() => {
+    const tagMap = {};
+    approvedBlogs.forEach((blog) => {
+      if (Array.isArray(blog.tags)) {
+        blog.tags.forEach((tag) => {
+          const clean = tag.toLowerCase().trim();
+          if (clean) tagMap[clean] = (tagMap[clean] || 0) + 1;
+        });
       }
     });
-    setCategoryCounts(counts); // Store the counts in state
+    return Object.entries(tagMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12);
+  }, [approvedBlogs]);
+
+  useEffect(() => {
+    const counts = {};
+    approvedBlogs.forEach((blog) => {
+      const cat = blog.category;
+      if (cat) {
+        counts[cat] = (counts[cat] || 0) + 1;
+      }
+    });
+    setCategoryCounts(counts);
   }, [Blogs]);
-  // Filter blogs based on category or show all if no category is selected
-  const handleLogOut = () => {
-    logOut();
-  };
-  const [isNavOpen, setIsNavOpen] = useState(false);
-  const toggleSidebar = () => {
-    setIsNavOpen(!isNavOpen);
-  };
+
+  const toggleSidebar = () => setIsNavOpen(!isNavOpen);
+
+  const dashboardRoute =
+    currentUser?.role === "admin"
+      ? "/dashboard/admin"
+      : currentUser?.role === "blogger"
+      ? "/dashboard/blogger"
+      : null;
+
   return (
-    <section className="flex items-start">
-      {/* Left Side (Fixed Sidebar) */}
-      <div className="fixed hidden md:flex flex-col top-0 left-0 pr-5 md:w-[20%] h-screen border-r bg-white z-10">
-        {/* Logo */}
-        <Link
-          to="/"
-          className="md:flex pl-5 h-14 gap-1 hidden items-center justify-start border-b"
-        >
-          <img className="h-[35px]" src={logo} alt="Logo" />
-          <h2 className="text-black text-[17px] font-semibold">Blog Editor</h2>
-        </Link>
-        {/* Blog Category Name */}
-        <div className="grid items-start py-2 lg:pl-4 gap-2 mr-5 border-b">
-          {CategoryData.map((data, index) => (
-            //  <Link to={`/category/${data.link}`} key={index}>
-            <Link
-              to={`category/${data.link}`}
-              key={index}
-              onClick={() => setActiveIndex(index)}
-              className={`text-[17px] flex px-2 py-2 items-center justify-start gap-2 transition-all ${
-                activeIndex === index
-                  ? "text-[#F50400] border-r-4 rounded-l-md pr-2 border-[#F50400] bg-gray-100"
-                  : "text-gray-600"
-              }`}
-            >
-              <div className="flex gap-3 items-center">
-                {/* Display the icon and title */}
-                <p className="text-[18px]">{data.icon}</p>
-                {data.title}
+    <div className="min-h-screen bg-slate-50/50 flex">
+      {/* Desktop Fixed Left Sidebar */}
+      <aside className="hidden md:flex flex-col fixed top-0 left-0 w-64 lg:w-72 h-screen bg-white border-r border-slate-200/80 z-30 justify-between">
+        <div>
+          {/* Brand Header */}
+          <div className="h-16 px-6 flex items-center border-b border-slate-100">
+            <Link to="/" className="flex items-center gap-2.5 group">
+              <div className="p-1 rounded-xl bg-white shadow-sm border border-slate-100 group-hover:scale-105 transition-transform">
+                <img className="h-7 w-auto" src={logo} alt="Blog Editor" />
               </div>
-
-              {/* Notification Badge with spacing */}
-              <p className="ml-auto bg-[#F50400] rounded-full w-3 h-3 flex items-center justify-center p-3 text-white">
-                {categoryCounts[data.link] || 0}{" "}
-                {/* Display the category count */}
-              </p>
+              <span className="text-base font-bold text-slate-900 group-hover:text-brand transition-colors">
+                Blog<span className="text-brand">Editor</span>
+              </span>
             </Link>
-            // </Link>
-          ))}
+          </div>
+
+          {/* Categories Section */}
+          <div className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)]">
+            <p className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Browse Categories
+            </p>
+
+            {dynamicCategories.map((data, index) => {
+              const isCurrent =
+                (data.link === "" && !name) ||
+                (data.link !== "" && name === data.link);
+              const path = data.link ? `/blogs/category/${data.link}` : "/blogs";
+              const count =
+                data.link === "" ? approvedBlogs.length : categoryCounts[data.link] || 0;
+
+              return (
+                <Link
+                  to={path}
+                  key={index}
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                    isCurrent
+                      ? "bg-brand-light text-brand shadow-sm font-bold"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className={`text-base ${isCurrent ? "text-brand" : "text-slate-400"}`}>
+                      {data.icon}
+                    </span>
+                    <span>{data.title}</span>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      isCurrent
+                        ? "bg-brand text-white"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </Link>
+              );
+            })}
+
+            {/* Trending Tags Section */}
+            {popularTags.length > 0 && (
+              <div className="pt-4 border-t border-slate-100 mt-4 px-1">
+                <p className="px-2 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                  <span>Trending Tags</span>
+                  <span className="text-[10px] text-brand font-semibold">#explore</span>
+                </p>
+                <div className="flex flex-wrap gap-1.5 px-2">
+                  {popularTags.map(([tag, count]) => {
+                    const isActive = location.pathname === `/blogs/tag/${tag}`;
+                    return (
+                      <Link
+                        key={tag}
+                        to={`/blogs/tag/${tag}`}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                          isActive
+                            ? "bg-brand text-white shadow-xs font-bold"
+                            : "bg-slate-100 hover:bg-brand-light hover:text-brand text-slate-600"
+                        }`}
+                      >
+                        <span>#{tag}</span>
+                        <span
+                          className={`text-[9px] font-bold ${
+                            isActive ? "text-white/80" : "text-slate-400"
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Home and Bookmark Buttons */}
-        <div className="mx-4 mr-4">
+        {/* Bottom Sidebar Footer */}
+        <div className="p-4 border-t border-slate-100 bg-slate-50/50">
           <Link
-            to={"/"}
-            className="text-[17px] flex px-2 py-2 items-center  gap-2 transition-all group hover:text-[#F50400]"
+            to="/"
+            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-brand transition-colors rounded-xl hover:bg-white"
           >
-            <IoHomeOutline />
-            Home
+            <IoHomeOutline className="text-base" />
+            <span>Return to Home</span>
           </Link>
         </div>
-      </div>
+      </aside>
 
-      {/* Right Side */}
-      <div className="md:w-[80%] w-full md:ml-[20%] ">
-        {/* md Header */}
-        <div className="h-14 hidden px-5 border-b md:flex items-center justify-between">
-          <div className="relative ">
-            <input
-              className="bg-white w-full pr-11 h-10 pl-8 py-2 bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded transition duration-200 ease focus:outline-none focus:border-slate-400 hover:border-slate-400 shadow-sm focus:shadow-md"
-              placeholder="Search blogs..."
-              // value={searchTerm}
-              // onChange={(e) => setSearchTerm(e.target.value)} // Update search term
-            />
+      {/* Main Content Area */}
+      <div className="flex-1 md:ml-64 lg:ml-72 flex flex-col min-h-screen">
+        {/* Top Navbar */}
+        <header className="sticky top-0 z-20 h-16 glass-nav border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between">
+          {/* Mobile Hamburger + Title */}
+          <div className="flex items-center gap-3 md:hidden">
             <button
-              className="absolute left-0 h-8 w-8  top-1 my-auto px-2 flex items-center rounded"
-              type="button"
+              onClick={toggleSidebar}
+              className="p-2 rounded-xl text-slate-700 hover:bg-slate-100 border border-slate-200 focus:outline-none"
+              aria-label="Toggle Category Menu"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth="3"
-                stroke="currentColor"
-                className="w-8 h-8 text-slate-600"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-                />
-              </svg>
+              <HiOutlineBars3BottomRight className="w-5 h-5 text-slate-800" />
             </button>
+            <Link to="/" className="flex items-center gap-2">
+              <img className="h-7 w-auto" src={logo} alt="Logo" />
+              <span className="font-bold text-sm text-slate-900">
+                Blog<span className="text-brand">Editor</span>
+              </span>
+            </Link>
           </div>
 
-          <div className="text-white flex items-center gap-4">
-            <div className="md:flex text-black gap-2 hidden ">
-              {currentUser?.role ==="admin" && (
-                <NavLink
-                  to="/dashboard/admin"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "px-4 py-2 text-[#F50400]   border rounded-md bg-[#f5f5f5] "
-                      : "px-4 py-2 text-[#737373] hover:text-[#F50400] border rounded-md "
-                  }
-                >
-                  Dashboard
-                </NavLink>
-              )}
-              {currentUser?.role === "blogger" && (
-                <NavLink
-                  to="/dashboard/blogger"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "px-4 py-2 text-[#F50400]   bg-[#f5f5f5] border rounded-md"
-                      : "px-4 py-2 text-[#737373] hover:text-[#F50400] border rounded-md"
-                  }
-                >
-                  Dashboard
-                </NavLink>
-              )}
-            </div>
-            <div>
-          {user ? (
-            <button onClick={handleLogOut} to="/signin" className="text-white">
-              <button className="flex items-center justify-center gap-1 rounded font-medium bg-[#F50400] px-5 py-2 text-white transition-all duration-300 ease-in-out group">
-                Logout{" "}
-                <MdLogout   className="transform transition-transform duration-300 ease-in-out group-hover:translate-x-2" size={21} />
-              </button>
-            </button>
-          ) : (
-            <Link to="/signin" className="text-white">
-              <button className="flex items-center justify-center gap-1 rounded font-medium bg-[#F50400] px-5 py-2 text-white transition-all duration-300 ease-in-out group">
-                Login <LuLogIn   className="transform transition-transform duration-300 ease-in-out group-hover:translate-x-2" size={21} />
-              </button>
+          {/* Breadcrumb Context / Category Heading */}
+          <div className="hidden md:flex items-center gap-2 text-sm text-slate-500 font-medium">
+            <Link to="/" className="hover:text-brand transition-colors">
+              Home
             </Link>
-          )}
-        </div>
+            <span>/</span>
+            <Link to="/blogs" className="text-slate-800 font-semibold hover:text-brand transition-colors">
+              Blogs
+            </Link>
+            {name && (
+              <>
+                <span>/</span>
+                <span className="capitalize text-brand font-bold bg-brand-light px-2.5 py-0.5 rounded-full text-xs">
+                  {name}
+                </span>
+              </>
+            )}
           </div>
-        </div>
-        {/* Small Hieader */}
-        <div className="h-14 flex px-5 gap-3 border-b  md:hidden items-center justify-between">
-        <div
-          onClick={toggleSidebar}
-          className="bg-[#F50400] md:hidden px-3 py-1 rounded-md"
-        >
-          <FaBarsStaggered color="#fff " className="bg-[#F50400]" size={22} />
-        </div>
 
-          <div className="text-white flex items-center gap-4">
-            <div className="flex text-black gap-2  ">
-              {currentUser?.role === "admin" && (
-                <NavLink
-                  to="/dashboard/admin"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "px-3 py-1 text-[#F50400]   border rounded-md bg-[#f5f5f5] "
-                      : "px-3 py-1 text-[#737373] hover:text-[#F50400] border rounded-md "
-                  }
-                >
-                  Dashboard
-                </NavLink>
-              )}
-              {currentUser?.role === "blogger" && (
-                <NavLink
-                  to="/dashboard/blogger"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "px-3 py-1 text-[#F50400]   bg-[#f5f5f5] border rounded-md"
-                      : "px-3 py-1 text-[#737373] hover:text-[#F50400] border rounded-md"
-                  }
-                >
-                  Dashboard
-                </NavLink>
-              )}
-            </div>
-            <div>
-          {user ? (
-            <button onClick={handleLogOut} to="/signin" className="text-white">
-              <button className="flex items-center justify-center gap-1 rounded font-medium bg-[#F50400] px-3 py-1 text-white transition-all duration-300 ease-in-out group">
-                Logout{" "}
-                <MdLogout   className="transform transition-transform duration-300 ease-in-out group-hover:translate-x-2" size={21} />
-              </button>
-            </button>
-          ) : (
-            <Link to="/signin" className="text-white">
-              <button className="flex items-center justify-center gap-1 rounded font-medium bg-[#F50400] px-3 py-1 text-white transition-all duration-300 ease-in-out group">
-                Login <LuLogIn   className="transform transition-transform duration-300 ease-in-out group-hover:translate-x-2" size={21} />
-              </button>
-            </Link>
-          )}
-        </div>
-          </div>
-        </div>
-        
-        {/* Blog List */}
-        {/* <div className="grid lg:grid-cols-3 gap-7 pt-7 px-5">
-          {isBlogLoading && <p>Loading...</p>}
-          {isBlogError && <p>Error loading blogs</p>}
-          {filteredBlogs.map((blog) => (
-            <BlogCard key={blog._id} data={blog} />
-          ))}
-        </div> */}
-        <Outlet />
-      </div>
-      <div className="flex justify-end">
-        <div
-          className={`fixed text-white top-0 bottom-0 flex justify-end left-0 right-0 bg-black bg-opacity-75 z-50 transition-opacity duration-500 ease-in-out ${
-            isNavOpen
-              ? "opacity-100  transition-opacity duration-500 ease-out "
-              : "  opacity-0 pointer-events-none "
-          }`}
-        >
-          {/* Sidebar Container */}
-          <div
-            className={`w-9/12 border-l bg-white overflow-y-auto py-3  md:hidden h-screen transform transition-transform duration-500 ease-[cubic-bezier(0.7,0,0.3,1)] ${
-              isNavOpen ? "translate-x-0 " : "translate-x-full"
-            }`}
+          {/* Quick Search Button */}
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200/70 border border-slate-200/80 text-xs text-slate-500 hover:text-slate-800 transition-all max-w-[180px] sm:max-w-xs w-full"
+            title="Instant Search (Ctrl + K)"
           >
-            <div className="flex px-5 justify-between border-b border-gray-400 pb-4">
-              <div className="flex gap-2   items-center justify-center">
-                <img className="h-[35px]" src={logo} alt="Logo" />
-                <h2 className="text-black text-[17px] font-semibold">
-                  Blog Editor
-                </h2>
-              </div>
+            <LuSearch className="text-xs text-brand flex-shrink-0" />
+            <span className="truncate">Search stories...</span>
+            <kbd className="hidden md:inline-flex ml-auto items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-white border border-slate-200 text-slate-400 font-bold">
+              Ctrl K
+            </kbd>
+          </button>
+
+          {/* Action Links & Profile */}
+          <div className="flex items-center gap-3">
+            {currentUser?.role === "blogger" && (
+              <Link
+                to="/dashboard/blogger/add-blog"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-brand bg-brand-light/70 hover:bg-brand-light rounded-full border border-brand/20 transition-colors"
+              >
+                <LuPenSquare className="text-xs" />
+                Write Post
+              </Link>
+            )}
+
+            {dashboardRoute && (
+              <NavLink
+                to={dashboardRoute}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-full transition-colors"
+              >
+                <LuLayoutDashboard className="text-xs text-brand" />
+                Dashboard
+              </NavLink>
+            )}
+
+            {user ? (
               <button
-                className="border border-[#F50400] px-1 rounded-md"
-                onClick={toggleSidebar}
+                onClick={logOut}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold text-slate-700 hover:text-brand bg-white hover:bg-slate-50 border border-slate-200 transition-colors"
               >
-                <FaPlus className="rotate-45" size={20} color="black" />
+                <MdLogout className="text-xs" />
+                Logout
               </button>
-            </div>
-            <div className="pt-2 px-2 ">
-            <div className=" top-0 left-0 pr-5 md:w-[20%] h-screen border-r bg-white z-10">
-        {/* Logo */}
-        <Link
-          to="/"
-          className="md:flex pl-5 h-14 gap-1 hidden items-center justify-start border-b"
+            ) : (
+              <Link
+                to="/signin"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold text-white bg-brand hover:bg-brand-dark transition-colors shadow-sm"
+              >
+                Sign In
+              </Link>
+            )}
+          </div>
+        </header>
+
+        {/* Dynamic Outlet Component */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <Suspense fallback={<Loader />}>
+            <Outlet />
+          </Suspense>
+        </main>
+      </div>
+
+      {/* Mobile Sidebar Drawer */}
+      {isNavOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 md:hidden"
+          onClick={toggleSidebar}
         >
-          <img className="h-[35px]" src={logo} alt="Logo" />
-          <h2 className="text-black text-[17px] font-semibold">Blog Editor</h2>
-        </Link>
-        {/* Blog Category Name */}
-        <div className="grid items-start py-2 lg:pl-4 gap-2 mr-5 border-b">
-          {CategoryData.map((data, index) => (
-            //  <Link to={`/category/${data.link}`} key={index}>
-            <Link
-              to={`category/${data.link}`}
-              key={index}
-              onClick={() => setActiveIndex(index)}
-              className={`text-[17px] flex px-2 py-2 items-center justify-start gap-2 transition-all ${
-                activeIndex === index
-                  ? "text-[#F50400] border-r-4 rounded-l-md pr-2 border-[#F50400] bg-gray-100"
-                  : "text-gray-600"
-              }`}
-            >
-              <div className="flex gap-3 items-center">
-                {/* Display the icon and title */}
-                <p className="text-[18px]">{data.icon}</p>
-                {data.title}
+          <div
+            className="fixed inset-y-0 left-0 w-4/5 max-w-xs bg-white shadow-2xl p-5 flex flex-col justify-between overflow-y-auto z-50 animate-in slide-in-from-left duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <img className="h-7 w-auto" src={logo} alt="Logo" />
+                  <span className="font-bold text-sm text-slate-900">
+                    Blog<span className="text-brand">Editor</span>
+                  </span>
+                </div>
+                <button
+                  onClick={toggleSidebar}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+                >
+                  <HiXMark className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* Notification Badge with spacing */}
-              <p className="ml-auto bg-[#F50400] rounded-full w-3 h-3 flex items-center justify-center p-3 text-white">
-                {categoryCounts[data.link] || 0}{" "}
-                {/* Display the category count */}
-              </p>
-            </Link>
-            // </Link>
-          ))}
-        </div>
+              <div className="mt-4 space-y-1">
+                <p className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Categories
+                </p>
+                {dynamicCategories.map((data, index) => {
+                  const isCurrent =
+                    (data.link === "" && !name) ||
+                    (data.link !== "" && name === data.link);
+                  const path = data.link ? `/blogs/category/${data.link}` : "/blogs";
+                  const count =
+                    data.link === "" ? approvedBlogs.length : categoryCounts[data.link] || 0;
 
-        {/* Home and Bookmark Buttons */}
-        <div className="mx-4 mr-4 text-black">
-          <Link
-            to={"/"}
-            className="text-[17px] flex px-2 py-2 items-center  gap-2 transition-all group hover:text-[#F50400]"
-          >
-            <IoHomeOutline />
-            Home
-          </Link>
-        </div>
-      </div>
+                  return (
+                    <Link
+                      to={path}
+                      key={index}
+                      onClick={toggleSidebar}
+                      className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold ${
+                        isCurrent
+                          ? "bg-brand-light text-brand font-bold"
+                          : "text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>{data.icon}</span>
+                        <span>{data.title}</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-600 font-bold">
+                        {count}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {/* Mobile Trending Tags */}
+              {popularTags.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-slate-100">
+                  <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                    <span>Trending Tags</span>
+                    <span className="text-[10px] text-brand font-semibold">#explore</span>
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 px-3">
+                    {popularTags.map(([tag, count]) => {
+                      const isActive = location.pathname === `/blogs/tag/${tag}`;
+                      return (
+                        <Link
+                          key={tag}
+                          to={`/blogs/tag/${tag}`}
+                          onClick={toggleSidebar}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                            isActive
+                              ? "bg-brand text-white font-bold"
+                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          }`}
+                        >
+                          <span>#{tag}</span>
+                          <span className="text-[10px] opacity-70">({count})</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-slate-100">
+              <Link
+                to="/"
+                onClick={toggleSidebar}
+                className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-600 hover:text-brand"
+              >
+                <IoHomeOutline />
+                <span>Return to Home</span>
+              </Link>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      )}
+      {/* Instant Search Command Palette Modal */}
+      <InstantSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+      />
+    </div>
   );
 };
 

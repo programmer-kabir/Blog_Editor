@@ -1,28 +1,34 @@
+import React, { lazy, Suspense } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import MainLayout from "../Layout/MainLayout";
-import Home from "../Pages/Home/Home";
-import Add from "../Components/Home/Add";
-import Blogs from "../Pages/Blogs/Blogs";
-import DetailsBlog from "../Components/Blog/DetailsBlog";
-import Blog from "../Components/Blog/Blog";
-import Signin from "../Pages/Authentication/signin/Signin";
-import Signup from "../Pages/Authentication/Signup/Signup";
-import Dashboard from "../Pages/Dashboard/Dashboard";
-import AdminBoard from "../Pages/Dashboard/Admin/AdminBoard";
-import Blogger from "../Pages/Dashboard/Blogger/Blogger";
 import PrivateRoute from "./PrivetRoute";
 import AdminRoute from "./AdminRoute";
 import BloggerRoute from "./BloggerRoute";
 import Error from "../Pages/Error/ErrorPage";
-import AddBlog from "../Pages/Dashboard/Blogger/AddBlog";
-import ShowBlog from "../Pages/Dashboard/Blogger/ShowBlog";
-import AllBloggers from "../Pages/Dashboard/Admin/AllBloggers";
-import AllUser from "../Pages/Dashboard/Admin/AllUser";
-import AdminBlogs from "../Pages/Dashboard/Admin/AdminBlogs";
-import AboutUs from "../Pages/FooterPages/AboutUs";
-import ContactUs from "../Pages/FooterPages/ContactUs";
-import Terms from "../Pages/FooterPages/Terms";
-import FAQs from "../Pages/FooterPages/FAQs";
+import Loader from "../Components/Loader/Loader";
+
+// Lazy-loaded Routes for Code Splitting & Performance
+const Home = lazy(() => import("../Pages/Home/Home"));
+const Add = lazy(() => import("../Components/Home/Add"));
+const Blogs = lazy(() => import("../Pages/Blogs/Blogs"));
+const DetailsBlog = lazy(() => import("../Components/Blog/DetailsBlog"));
+const Blog = lazy(() => import("../Components/Blog/Blog"));
+const Signin = lazy(() => import("../Pages/Authentication/Signin/Signin"));
+const Signup = lazy(() => import("../Pages/Authentication/Signup/Signup"));
+const Dashboard = lazy(() => import("../Pages/Dashboard/Dashboard"));
+const AdminBoard = lazy(() => import("../Pages/Dashboard/Admin/AdminBoard"));
+const Blogger = lazy(() => import("../Pages/Dashboard/Blogger/Blogger"));
+const AddBlog = lazy(() => import("../Pages/Dashboard/Blogger/AddBlog"));
+const ShowBlog = lazy(() => import("../Pages/Dashboard/Blogger/ShowBlog"));
+const AllBloggers = lazy(() => import("../Pages/Dashboard/Admin/AllBloggers"));
+const AllUser = lazy(() => import("../Pages/Dashboard/Admin/AllUser"));
+const AdminBlogs = lazy(() => import("../Pages/Dashboard/Admin/AdminBlogs"));
+const ManageCategories = lazy(() => import("../Pages/Dashboard/Admin/ManageCategories"));
+const MyBookmarks = lazy(() => import("../Pages/Dashboard/Bookmarks/MyBookmarks"));
+const AboutUs = lazy(() => import("../Pages/FooterPages/AboutUs"));
+const ContactUs = lazy(() => import("../Pages/FooterPages/ContactUs"));
+const Terms = lazy(() => import("../Pages/FooterPages/Terms"));
+const FAQs = lazy(() => import("../Pages/FooterPages/FAQs"));
 
 const router = createBrowserRouter([
   {
@@ -43,7 +49,7 @@ const router = createBrowserRouter([
         element: <Signup />,
       },
       {
-        path: "/signin" ,
+        path: "/signin",
         element: <Signin />,
       },
       {
@@ -66,12 +72,22 @@ const router = createBrowserRouter([
   },
   {
     path: "/blogs",
-    element: <Blogs />,
+    element: (
+      <Suspense fallback={<Loader />}>
+        <Blogs />
+      </Suspense>
+    ),
     children: [
-     { path: "",
-      element: <Blog />,},
+      {
+        path: "",
+        element: <Blog />,
+      },
       {
         path: "category/:name",
+        element: <Blog />,
+      },
+      {
+        path: "tag/:name",
         element: <Blog />,
       },
       {
@@ -84,56 +100,87 @@ const router = createBrowserRouter([
     path: "/dashboard",
     element: (
       <PrivateRoute>
-        <AdminRoute>
+        <Suspense fallback={<Loader />}>
           <Dashboard />
-        </AdminRoute>
+        </Suspense>
       </PrivateRoute>
     ),
     children: [
       {
         path: "admin",
-        element: <AdminBoard />,
+        element: (
+          <AdminRoute>
+            <AdminBoard />
+          </AdminRoute>
+        ),
       },
       {
         path: "admin/show-bloggers",
-        element: <AllBloggers />,
+        element: (
+          <AdminRoute>
+            <AllBloggers />
+          </AdminRoute>
+        ),
       },
       {
         path: "admin/show-users",
-        element: <AllUser />,
+        element: (
+          <AdminRoute>
+            <AllUser />
+          </AdminRoute>
+        ),
       },
       {
         path: "admin/blogs",
-        element: <AdminBlogs />,
+        element: (
+          <AdminRoute>
+            <AdminBlogs />
+          </AdminRoute>
+        ),
       },
-    ],
-  },
-
-  {
-    path: "/dashboard",
-    element: (
-      <PrivateRoute>
-        <BloggerRoute>
-          <Dashboard />
-        </BloggerRoute>
-      </PrivateRoute>
-    ),
-    children: [
+      {
+        path: "admin/categories",
+        element: (
+          <AdminRoute>
+            <ManageCategories />
+          </AdminRoute>
+        ),
+      },
       {
         path: "blogger",
-        element: <Blogger />,
+        element: (
+          <BloggerRoute>
+            <Blogger />
+          </BloggerRoute>
+        ),
       },
       {
         path: "blogger/add-blog",
-        element: <AddBlog />,
+        element: (
+          <BloggerRoute>
+            <AddBlog />
+          </BloggerRoute>
+        ),
       },
       {
         path: "blogger/show-blog",
-        element: <ShowBlog />,
+        element: (
+          <BloggerRoute>
+            <ShowBlog />
+          </BloggerRoute>
+        ),
       },
       {
         path: "blogger/blog-details/:id",
-        element: <DetailsBlog />,
+        element: (
+          <BloggerRoute>
+            <DetailsBlog />
+          </BloggerRoute>
+        ),
+      },
+      {
+        path: "bookmarks",
+        element: <MyBookmarks />,
       },
     ],
   },

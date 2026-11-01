@@ -21,7 +21,7 @@ const AuthProvider = ({ children }) => {
       setUser(currentUser);
       if (currentUser) {
         axios
-          .post("https://blogs-editor-server.vercel.app/jwt", {
+          .post(`${import.meta.env.VITE_API_URL}/jwt`, {
             email: currentUser?.email,
           })
           .then((data) => {

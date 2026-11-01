@@ -1,117 +1,191 @@
 import React from "react";
-import { FaTwitter, FaGithub, FaLinkedin, FaFacebookF } from "react-icons/fa";
-import logo from "../../../assets/Logo/logo1.png";
 import { Link } from "react-router-dom";
-import { GrLocation } from "react-icons/gr";
-import { LuPhoneCall } from "react-icons/lu";
+import logo from "../../../assets/Logo/logo1.png";
+import { FaTwitter, FaGithub, FaLinkedin, FaFacebookF } from "react-icons/fa";
+import { LuMapPin, LuMail, LuArrowUp } from "react-icons/lu";
+
 const Footer = () => {
   const currentYear = new Date().getFullYear();
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
-    <footer className=" bg-[#F3F4F6] pt-8 pb-6 mt-12">
-      <div className="w-[95%] mx-auto px-4 ">
-        <div className="lg:flex justify-between">
-          {/* Left Section */}
-          <div className="w-full lg:w-1/2">
-            <Link to={"/"} className="md:flex gap-2  items-center">
-              <img className="h-[35px]" src={logo} alt="Logo" />
-              <h2 className="text-black text-[17px] font-semibold">
-                Blog Editor
-              </h2>
+    <footer className="bg-slate-950 text-slate-400 border-t border-slate-800/80 pt-16 pb-12 transition-colors">
+      <div className="w-[94%] md:w-[95%] max-w-[1750px] mx-auto">
+        
+        {/* Main Footer Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 pb-12 border-b border-slate-800/80">
+          
+          {/* Brand & Vision (Col 1-5) */}
+          <div className="lg:col-span-5 space-y-4">
+            <Link to="/" className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-xl bg-white shadow-sm inline-flex">
+                <img className="h-7 w-auto object-contain" src={logo} alt="Blog Editor Logo" />
+              </div>
+              <span className="text-xl font-bold tracking-tight text-white">
+                Blog<span className="text-brand">Editor</span>
+              </span>
             </Link>
-            <h5 className="text-sm mt-2 mb-2 [#1F2937]">
-              Making the world a better place through constructing <br />{" "}
-              elegant hierarchies.
-            </h5>
-            <div className="space-y-2 gap-4  mt-4">
-              <button
-                className="flex items-center gap-2 text-[#1F2937] font-normal  hover:text-black "
-                type="button"
+
+            <p className="text-sm text-slate-400 max-w-sm leading-relaxed">
+              A high-impact digital publishing platform connecting creative thinkers, developers, and storytellers worldwide.
+            </p>
+
+            <div className="space-y-2 pt-2 text-xs text-slate-400">
+              <div className="flex items-center gap-2">
+                <LuMapPin className="text-brand text-sm" />
+                <span>Sylhet, Bangladesh</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <LuMail className="text-brand text-sm" />
+                <span>contact@blogeditor.io</span>
+              </div>
+            </div>
+
+            {/* Social Links */}
+            <div className="flex items-center gap-3 pt-3">
+              <a
+                href="https://twitter.com"
+                target="_blank"
+                rel="noreferrer"
+                className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 hover:border-brand/40 hover:bg-brand hover:text-white text-slate-400 flex items-center justify-center transition-all duration-200"
+                aria-label="Twitter"
               >
-                <GrLocation size={22} />
-                <span className="text-[#1F2937] text-[15px]">
-                  {" "}
-                  Sylhet Bangladesh
-                </span>
-              </button>
-              <button
-                className="flex items-center gap-2 text-[#1F2937] font-normal  hover:text-black "
-                type="button"
+                <FaTwitter size={14} />
+              </a>
+              <a
+                href="https://facebook.com"
+                target="_blank"
+                rel="noreferrer"
+                className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 hover:border-brand/40 hover:bg-brand hover:text-white text-slate-400 flex items-center justify-center transition-all duration-200"
+                aria-label="Facebook"
               >
-                <LuPhoneCall size={22} />
-                <span className="text-[#1F2937] text-[15px]">
-                  {" "}
-                  0100000000000
-                </span>
-              </button>
+                <FaFacebookF size={14} />
+              </a>
+              <a
+                href="https://linkedin.com"
+                target="_blank"
+                rel="noreferrer"
+                className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 hover:border-brand/40 hover:bg-brand hover:text-white text-slate-400 flex items-center justify-center transition-all duration-200"
+                aria-label="LinkedIn"
+              >
+                <FaLinkedin size={14} />
+              </a>
+              <a
+                href="https://github.com"
+                target="_blank"
+                rel="noreferrer"
+                className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 hover:border-brand/40 hover:bg-brand hover:text-white text-slate-400 flex items-center justify-center transition-all duration-200"
+                aria-label="GitHub"
+              >
+                <FaGithub size={14} />
+              </a>
             </div>
           </div>
 
-          {/* meddle Section */}
-          <div className="w-full lg:w-1/5">
-            <h4 className="text-black text-[17px] font-semibold">
-              Importance link
+          {/* Quick Navigation (Col 6-7) */}
+          <div className="lg:col-span-2 space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+              Navigation
             </h4>
-
-            <div className=" mb-6 flex flex-col text-lg mt-2">
-              <Link
-                to="/about-us"
-                className="text-[15px] [#1F2937] hover:underline"
-              >
-                About Us
-              </Link>
-              <Link
-                to="/contact-us"
-                className="text-[15px] [#1F2937] hover:underline"
-              >
-                Contact Us
-              </Link>
-              <Link
-                to="/trems-conditions"
-                className="text-[15px] [#1F2937] hover:underline"
-              >
-                Terms & Conditions
-              </Link>
-              <Link
-                to="/faqs"
-                className="text-[15px] [#1F2937] hover:underline"
-              >
-                FAQs
-              </Link>
-            </div>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link to="/" className="hover:text-white hover:underline transition-colors">
+                  Home
+                </Link>
+              </li>
+              <li>
+                <Link to="/blogs" className="hover:text-white hover:underline transition-colors">
+                  Explore Blogs
+                </Link>
+              </li>
+              <li>
+                <Link to="/about-us" className="hover:text-white hover:underline transition-colors">
+                  About Us
+                </Link>
+              </li>
+              <li>
+                <Link to="/contact-us" className="hover:text-white hover:underline transition-colors">
+                  Contact Us
+                </Link>
+              </li>
+            </ul>
           </div>
 
-          {/* Left Section */}
-          <div className="w-full lg:w-[25%]">
-            <h4 className="text-2xl [#1F2937] font-semibold ">
-              Let's keep in touch!
+          {/* Popular Categories (Col 8-10) */}
+          <div className="lg:col-span-3 space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+              Categories
             </h4>
-            <h5 className="text-sm mt-2 mb-2 [#1F2937]">
-              Making the world a better place through constructing <br />{" "}
-              elegant hierarchies.
-            </h5>
-            <h2 className="text-base text-[#1F2937] font-medium mt-6  lg:mb-0">
-              Connect with Us
-            </h2>
-            <div className=" mb-6 flex gap-4 text-lg mt-2">
-              <button
-                className=" text-[#1F2937] font-normal  hover:text-black "
-                type="button"
-              >
-                <FaTwitter />
-              </button>
-              <button className=" text-[#1F2937] font-normal  hover:text-black ">
-                <FaFacebookF size={19} />
-              </button>
-              <button className=" text-[#1F2937] font-normal  hover:text-black ">
-                <FaLinkedin size={19} />
-              </button>
-              <button className=" text-[#1F2937] font-normal  hover:text-black ">
-                <FaGithub size={19} />
-              </button>
-            </div>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link to="/blogs/category/programming" className="hover:text-white hover:underline transition-colors">
+                  Programming & Code
+                </Link>
+              </li>
+              <li>
+                <Link to="/blogs/category/technology" className="hover:text-white hover:underline transition-colors">
+                  Technology Trends
+                </Link>
+              </li>
+              <li>
+                <Link to="/blogs/category/devops" className="hover:text-white hover:underline transition-colors">
+                  Cloud & DevOps
+                </Link>
+              </li>
+              <li>
+                <Link to="/blogs/category/lifestyle" className="hover:text-white hover:underline transition-colors">
+                  Lifestyle & Health
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Legal & Trust (Col 11-12) */}
+          <div className="lg:col-span-2 space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+              Company
+            </h4>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link to="/trems-conditions" className="hover:text-white hover:underline transition-colors">
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link to="/faqs" className="hover:text-white hover:underline transition-colors">
+                  FAQ & Support
+                </Link>
+              </li>
+              <li>
+                <Link to="/dashboard/blogger/add-blog" className="text-brand font-semibold hover:underline transition-colors">
+                  Become a Writer &rarr;
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <p>© {currentYear} Blog Editor. All rights reserved.</p>
+
+          <div className="flex items-center gap-6">
+            <span>Built with precision in Sylhet, Bangladesh</span>
+            <button
+              onClick={scrollToTop}
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              title="Back to top"
+              aria-label="Back to top"
+            >
+              <LuArrowUp size={14} />
+            </button>
           </div>
         </div>
+
       </div>
     </footer>
   );

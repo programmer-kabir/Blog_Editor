@@ -7,7 +7,7 @@ export const fetchBloggerBlogs = createAsyncThunk(
     try {
       // Send userEmail in the API request
       const response = await axios.get(
-        `https://blogs-editor-server.vercel.app/bloggersBlog?email=${userEmail}`
+        `${import.meta.env.VITE_API_URL}/bloggersBlog?email=${userEmail}`
       );
       return response.data;
     } catch (error) {

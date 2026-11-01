@@ -1,240 +1,442 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchBlogs } from "../../Redux/Blogs/blogSlice";
 import { formatDate } from "../../../Components/DateFomate/DateFormate";
-import { BsThreeDots } from "react-icons/bs";
-import toast from "react-hot-toast";
+import TableSkeleton from "../../../Components/Loader/TableSkeleton";
 import axios from "axios";
-import { IoIosArrowForward } from "react-icons/io";
-import Loader from "../../../Components/Loader/Loader";
+import toast from "react-hot-toast";
+import {
+  LuBookOpen,
+  LuCheckCircle2,
+  LuXCircle,
+  LuEye,
+  LuSearch,
+  LuClock,
+  LuChevronLeft,
+  LuChevronRight,
+  LuAlertCircle,
+  LuX,
+  LuSend,
+} from "react-icons/lu";
+
 const AdminBlogs = () => {
   const dispatch = useDispatch();
-  const { isBlogLoading, Blogs, isBlogError } = useSelector(
-    (state) => state.Blogs
-  );
+  const { isBlogLoading, Blogs = [] } = useSelector((state) => state.Blogs);
 
-  useEffect(() => {
-    dispatch(fetchBlogs());
-  }, [dispatch, Blogs]);
-
-  // State to handle dropdown and reject modal visibility
-  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [selectedBlog, setSelectedBlog] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleApprove = (blogId) => {
-    setActiveDropdown(null);
-    const data = { blogId, status: "approved" };
-    console.log(data);
-    axios
-      .put("https://blogs-editor-server.vercel.app/blogs", data)
-      .then((response) => {
-        console.log(response.data);
-        if (response.data.modifiedCount === 1) {
-          toast.success("Blog is Approved");
-        }
-      });
+  useEffect(() => {
+    dispatch(fetchBlogs());
+  }, [dispatch]);
+
+  const approvedBlogs = Blogs.filter((b) => b.status === "approved");
+  const pendingBlogs = Blogs.filter((b) => b.status === "pending");
+  const rejectBlogs = Blogs.filter((b) => b.status === "reject");
+
+  // Filter by status tab
+  const statusFiltered = Blogs.filter((blog) => {
+    if (activeFilter === "approved") return blog.status === "approved";
+    if (activeFilter === "pending") return blog.status === "pending";
+    if (activeFilter === "reject") return blog.status === "reject";
+    return true;
+  });
+
+  // Filter by search query
+  const displayedBlogs = statusFiltered.filter((blog) =>
+    blog?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    blog?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    blog?.category?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const blogsPerPage = 8;
+  const totalPages = Math.ceil(displayedBlogs.length / blogsPerPage) || 1;
+  const indexOfLast = currentPage * blogsPerPage;
+  const indexOfFirst = indexOfLast - blogsPerPage;
+  const currentBlogs = displayedBlogs.slice(indexOfFirst, indexOfLast);
+
+  const handleApprove = async (blogId) => {
+    try {
+      const data = { blogId, status: "approved" };
+      const response = await axios.put(`${import.meta.env.VITE_API_URL}/blogs`, data);
+      if (response.data.modifiedCount === 1) {
+        toast.success("Blog approved and published live!");
+        dispatch(fetchBlogs());
+      }
+    } catch (err) {
+      toast.error("Failed to approve blog");
+    }
   };
 
-  const handleReject = (blogId) => {
-    setActiveDropdown(null);
-
-    setSelectedBlog(blogId);
-
+  const openRejectModal = (blog) => {
+    setSelectedBlog(blog);
+    setRejectReason(blog.rejectReason || "");
     setShowRejectModal(true);
   };
 
-  const handleRejectSubmit = () => {
-    console.log("Reason for rejection:", rejectReason);
-    setShowRejectModal(false);
-    const data = { blogId: selectedBlog, status: "reject", rejectReason };
-    console.log(data);
-    axios
-      .put("https://blogs-editor-server.vercel.app/blogs", data)
-      .then((response) => {
-        console.log(response.data);
-        if (response.data.modifiedCount === 1) {
-          toast.success("Blog is Reject and Notes Submit");
-        }
-      });
-    // toast.error("Blog Rejected");
-  };
-  const [currentPage, setCurrentPage] = useState(1);
-  const blogsPerPage = 7;
+  const handleRejectSubmit = async (e) => {
+    e.preventDefault();
+    if (!rejectReason.trim()) {
+      toast.error("Please provide a reason for rejection");
+      return;
+    }
 
-  // Calculate the total number of pages
-  const totalPages = Math.ceil(Blogs.length / blogsPerPage);
-
-  // Slice the blogs data for the current page
-  const indexOfLastBlog = currentPage * blogsPerPage;
-  const indexOfFirstBlog = indexOfLastBlog - blogsPerPage;
-  const currentBlogs = Blogs.slice(indexOfFirstBlog, indexOfLastBlog);
-  const nextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
+    setIsProcessing(true);
+    try {
+      const data = {
+        blogId: selectedBlog._id,
+        status: "reject",
+        rejectReason: rejectReason.trim(),
+      };
+      const response = await axios.put(`${import.meta.env.VITE_API_URL}/blogs`, data);
+      if (response.data.modifiedCount === 1) {
+        toast.success("Blog marked as rejected with feedback sent to author");
+        setShowRejectModal(false);
+        dispatch(fetchBlogs());
+      }
+    } catch (err) {
+      toast.error("Failed to submit rejection");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  const prevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-  // if(isBlogLoading){
-  //   return <Loader />
-  // }
   return (
-    <section className="pt-10">
-      <div className="w-[95%] mx-auto">
-        <h2 className="text xl md:text-3xl font-semibold text-center mb-4">
-          All Blogs
-        </h2>
-        <div className="relative overflow-x-auto border-t border-l border-r rounded">
-          <table className="w-full text-sm text-left text-gray-500">
-            <thead className="text-[#737373] uppercase bg-gray-50 border-b">
-              <tr>
-                <th scope="col" className="px-6 py-3 font-medium">
-                  Image
-                </th>
-                <th scope="col" className="px-6 py-3 font-medium">
-                  Email
-                </th>
-                <th scope="col" className="px-6 py-3 font-medium">
-                  Category
-                </th>
-                <th scope="col" className="px-6 py-3 font-medium">
-                  Title
-                </th>
-                <th scope="col" className="px-6 py-3 font-medium">
-                  Published Status
-                </th>
-                <th scope="col" className="px-6 py-3 font-medium">
-                  Created At
-                </th>
-                <th scope="col" className="px-6 py-3 font-medium">
-                  Change Status
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentBlogs.map((blog) => (
-                <tr key={blog._id} className="bg-white border-b">
-                  <td className="px-6 py-4 font-normal text-gray-900 whitespace-nowrap">
-                    <img
-                      className="w-10 h-10 rounded-md"
-                      src={blog.photo}
-                      alt=""
-                    />
-                  </td>
-                  <td className="px-6 py-4 font-normal text-gray-900 whitespace-nowrap">
-                    {blog.email}
-                  </td>
-                  <td className="px-6 py-4 font-normal text-gray-900 whitespace-nowrap">
-                    {blog.category}
-                  </td>
-                  <td className="px-6 truncate py-4 font-normal text-gray-900 whitespace-nowrap">
-                    {blog.title.split(" ").length > 4 ? (
-                      <>{blog.title.split(" ").slice(0, 4).join(" ")}...</>
-                    ) : (
-                      blog.title
-                    )}
-                  </td>
-                  <td className="px-6 py-4 font-normal text-gray-900 whitespace-nowrap">
-                    <button className="bg-[#F50400] px-4 py-1 rounded-full text-white">
-                      {blog.status}
-                    </button>
-                  </td>
-                  <td className="px-6 py-4 font-normal text-gray-900 whitespace-nowrap">
-                    {formatDate(blog.date)}
-                  </td>
-                  <td className="px-6 py-4 font-normal text-gray-900 whitespace-nowrap relative">
-                    <BsThreeDots
-                      className="cursor-pointer"
-                      onClick={() =>
-                        setActiveDropdown(
-                          activeDropdown === blog._id ? null : blog._id
-                        )
-                      }
-                    />
-                    {activeDropdown === blog._id && (
-                      <div className="absolute right-16 mt-1 w-40 bg-white border border-gray-200 shadow-lg rounded-lg z-50">
-                        <button
-                          className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-                          onClick={() => handleApprove(blog._id)}
-                        >
-                          Approve
-                        </button>
-                        <button
-                          className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-                          onClick={() => handleReject(blog._id)}
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="space-y-6 pb-12">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Editorial Moderation Queue
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500">
+            Review incoming submissions, approve quality stories, or return with editorial notes.
+          </p>
         </div>
 
-        {/* Pagination Controls */}
-        <div className="flex gap-3 justify-end pr-5 items-center mt-4">
-          <span className="text-sm">
-            Page {currentPage} of {totalPages}
-          </span>
-
-          <button
-            onClick={prevPage}
-            disabled={currentPage === 1}
-            className="p-1 rotate-180 border rounded disabled:text-gray-500"
-          >
-            <IoIosArrowForward />
-          </button>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={nextPage}
-              disabled={currentPage === totalPages}
-              className="p-1 border rounded disabled:text-gray-500"
-            >
-              <IoIosArrowForward />
-            </button>
+        {pendingBlogs.length > 0 && (
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <span>{pendingBlogs.length} articles waiting for review</span>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Reject Modal */}
-      {showRejectModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-[400px]">
-            <h2 className="text-xl font-semibold mb-4">Reject Reason</h2>
-            <textarea
-              className="w-full border border-gray-300 p-2 rounded-lg outline-none"
-              rows="4"
-              placeholder="Enter rejection reason..."
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-            />
-            <div className="flex justify-end gap-3 mt-4">
+      {/* Filter Tabs & Search Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        
+        {/* Status Filter Tabs */}
+        <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-2xl bg-slate-100 max-w-fit">
+          <button
+            type="button"
+            onClick={() => { setActiveFilter("all"); setCurrentPage(1); }}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              activeFilter === "all"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            All Stories ({Blogs.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActiveFilter("pending"); setCurrentPage(1); }}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              activeFilter === "pending"
+                ? "bg-white text-amber-700 shadow-sm"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Pending Review ({pendingBlogs.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActiveFilter("approved"); setCurrentPage(1); }}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              activeFilter === "approved"
+                ? "bg-white text-emerald-700 shadow-sm"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Approved ({approvedBlogs.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActiveFilter("reject"); setCurrentPage(1); }}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              activeFilter === "reject"
+                ? "bg-white text-rose-700 shadow-sm"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Rejected ({rejectBlogs.length})
+          </button>
+        </div>
+
+        {/* Search Input */}
+        <div className="relative w-full md:w-80">
+          <LuSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+            placeholder="Search by title, author, or category..."
+            className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand bg-white"
+          />
+        </div>
+
+      </div>
+
+      {/* Moderation Table */}
+      {isBlogLoading ? (
+        <TableSkeleton rows={7} cols={6} />
+      ) : displayedBlogs.length === 0 ? (
+        <div className="p-16 text-center rounded-3xl bg-white border border-slate-200/80 shadow-card space-y-2">
+          <LuBookOpen className="text-3xl text-slate-400 mx-auto" />
+          <h3 className="font-bold text-slate-800 text-base">No Articles Found</h3>
+          <p className="text-xs text-slate-500">
+            {searchTerm
+              ? `No articles match your query "${searchTerm}".`
+              : "No stories currently match this filter tab."}
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-150 bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th className="py-3.5 px-4">Story & Title</th>
+                  <th className="py-3.5 px-4">Category</th>
+                  <th className="py-3.5 px-4">Author</th>
+                  <th className="py-3.5 px-4">Submitted</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4 text-right">Moderation Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                {currentBlogs.map((blog) => {
+                  const isApproved = blog.status === "approved";
+                  const isPending = blog.status === "pending";
+                  const isRejected = blog.status === "reject";
+
+                  return (
+                    <tr key={blog._id} className="hover:bg-slate-50/60 transition-colors">
+                      {/* Story & Thumbnail */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3 max-w-sm">
+                          {blog.photo ? (
+                            <img
+                              src={blog.photo}
+                              alt=""
+                              className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center flex-shrink-0">
+                              <LuBookOpen />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <Link
+                              to={`/blogs/details/${blog._id}`}
+                              className="font-bold text-slate-900 hover:text-brand transition-colors line-clamp-1 text-xs sm:text-sm"
+                            >
+                              {blog.title}
+                            </Link>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">
+                              ID: {blog._id.slice(-6)}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Category */}
+                      <td className="py-3.5 px-4">
+                        <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700">
+                          {blog.category}
+                        </span>
+                      </td>
+
+                      {/* Author */}
+                      <td className="py-3.5 px-4 font-medium text-slate-800">
+                        <span className="block truncate max-w-[150px]">{blog.email}</span>
+                      </td>
+
+                      {/* Submitted Date */}
+                      <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                        {blog.date || "Recent"}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {isApproved && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <LuCheckCircle2 /> Approved
+                          </span>
+                        )}
+                        {isPending && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            Pending
+                          </span>
+                        )}
+                        {isRejected && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200">
+                            <LuXCircle /> Rejected
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Moderation Actions */}
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Approve Button */}
+                          {!isApproved && (
+                            <button
+                              onClick={() => handleApprove(blog._id)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                              title="Approve Story"
+                            >
+                              <LuCheckCircle2 className="text-xs" />
+                              <span>Approve</span>
+                            </button>
+                          )}
+
+                          {/* Reject Button */}
+                          {!isRejected && (
+                            <button
+                              onClick={() => openRejectModal(blog)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors"
+                              title="Reject with notes"
+                            >
+                              <LuXCircle className="text-xs" />
+                              <span>Reject</span>
+                            </button>
+                          )}
+
+                          {/* Preview Link */}
+                          <Link
+                            to={`/blogs/details/${blog._id}`}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-brand hover:bg-slate-100 transition-colors"
+                            title="Read Story"
+                          >
+                            <LuEye className="text-sm" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Bar */}
+          <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <span>
+              Showing {indexOfFirst + 1} to {Math.min(indexOfLast, displayedBlogs.length)} of {displayedBlogs.length} articles
+            </span>
+
+            <div className="flex items-center gap-2">
               <button
-                className="bg-gray-500 text-white px-4 py-2 rounded"
-                onClick={() => setShowRejectModal(false)}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-50"
               >
-                Cancel
+                <LuChevronLeft className="text-sm" />
               </button>
+              <span className="font-bold text-slate-800">
+                {currentPage} / {totalPages}
+              </span>
               <button
-                className="bg-red-500 text-white px-4 py-2 rounded"
-                onClick={handleRejectSubmit}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-50"
               >
-                Submit
+                <LuChevronRight className="text-sm" />
               </button>
             </div>
           </div>
         </div>
       )}
-    </section>
+
+      {/* Reject Modal Dialog */}
+      {showRejectModal && selectedBlog && (
+        <div
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setShowRejectModal(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-3xl shadow-elevated p-6 border border-slate-150 animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-rose-600">
+                <LuAlertCircle className="text-lg" />
+                <h3 className="font-bold text-slate-900 text-base">
+                  Reject Story Submission
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowRejectModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+              >
+                <LuX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRejectSubmit} className="mt-4 space-y-4">
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Article:</p>
+                <p className="text-sm font-bold text-slate-800 line-clamp-1">
+                  {selectedBlog.title}
+                </p>
+                <p className="text-[11px] text-slate-400">Author: {selectedBlog.email}</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Feedback & Rejection Reason
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Explain why this article cannot be published (e.g. requires formatting, inappropriate cover photo, lacks references)..."
+                  className="w-full p-3 rounded-2xl border border-slate-200 text-xs focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand text-slate-800"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRejectModal(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isProcessing}
+                  className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-sm disabled:opacity-50"
+                >
+                  <LuSend className="text-xs" />
+                  <span>{isProcessing ? "Rejecting..." : "Confirm Rejection"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

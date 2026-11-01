@@ -1,270 +1,664 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import JoditEditor from "jodit-react";
-import { FaChevronDown, FaChevronUp, FaPlus } from "react-icons/fa6";
-import { PiPaperPlaneRight } from "react-icons/pi";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
-import useAuth from "../../../Components/Hooks/useAuth";
 import axios from "axios";
-import { Link, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchCategories } from "../../Redux/Categories/categorySlice";
+import useAuth from "../../../Components/Hooks/useAuth";
+import {
+  LuUploadCloud,
+  LuX,
+  LuChevronDown,
+  LuArrowLeft,
+  LuCheck,
+  LuLayers,
+  LuClock,
+  LuCheckCircle2,
+  LuAlertCircle,
+  LuTag,
+  LuPlus,
+} from "react-icons/lu";
+
+const fallbackCategories = [
+  { id: "programming", label: "Programming & Code", icon: "💻" },
+  { id: "technology", label: "Technology & Gadgets", icon: "⚡" },
+  { id: "devops", label: "Cloud & DevOps", icon: "☁️" },
+  { id: "travel", label: "Travel & Tours", icon: "✈️" },
+  { id: "education", label: "Education & Learning", icon: "🎓" },
+  { id: "lifestyle", label: "Lifestyle & Culture", icon: "🌿" },
+  { id: "fitness", label: "Health & Fitness", icon: "💪" },
+  { id: "fashion", label: "Fashion & Style", icon: "👗" },
+  { id: "food", label: "Food & Culinary", icon: "🍔" },
+];
 
 const AddBlog = () => {
   const { user } = useAuth();
-  const [isOpenCategory, setIsOpenCategory] = useState(false);
-  const [activeItem, setActiveItem] = useState(null);
-  const [file, setFile] = useState(null);
+  const navigate = useNavigate();
   const editor = useRef(null);
-  const [content, setContent] = useState("");
+  const dispatch = useDispatch();
 
-  const categoryItems = [
-    { id: 1, label: "programming" },
-    { id: 2, label: "technology" },
-    { id: 3, label: "devops" },
-    { id: 4, label: "travel" },
-    { id: 6, label: "education" },
-    { id: 7, label: "lifestyle" },
-    { id: 8, label: "fitness" },
-    { id: 9, label: "fashion" },
-  ];
+  const { categories: serverCategories = [] } = useSelector(
+    (state) => state.Categories
+  );
 
-  const handleCategory = () => {
-    setIsOpenCategory((prevState) => !prevState);
-  };
-
-  const handleSelectItem = (item) => {
-    setActiveItem(item); // Set entire category item as activeItem
-    setIsOpenCategory(false);
-  };
-
-  //   const handleFileChange = (event) => {
-  //     const selectedFile = event.target.files[0];
-  //     if (selectedFile) {
-  //       setFile(URL.createObjectURL(selectedFile));
-  //     }
-  //   };
-  const handleFileChange = (event) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile) {
-      setFile(URL.createObjectURL(selectedFile));
+  useEffect(() => {
+    if (serverCategories.length === 0) {
+      dispatch(fetchCategories());
     }
-  };
+  }, [dispatch, serverCategories.length]);
 
-  const handleRemoveFile = () => {
-    setFile(null);
-  };
+  const activeCategories = useMemo(() => {
+    if (serverCategories && serverCategories.length > 0) {
+      return serverCategories.map((cat) => ({
+        id: cat.title,
+        label: cat.label,
+        icon: cat.icon || "📌",
+      }));
+    }
+    return fallbackCategories;
+  }, [serverCategories]);
+
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState("");
+  const [content, setContent] = useState("");
+  const [previewImage, setPreviewImage] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const {
     handleSubmit,
     register,
     formState: { errors },
-    setError,
-    clearErrors,
-  } = useForm();
-  const url =
-    "https://api.imgbb.com/1/upload?key=f1e08dc7c44c396aa409d50dfcc797da";
-  const navigate = useNavigate();
-  const onSubmit = async (data) => {
-    const today = new Date().toLocaleDateString("en-CA"); // Format: YYYY-MM-DD
+  } = useForm({
+    defaultValues: {
+      title: "",
+    },
+  });
 
-    // Validate category and content
-    if (!activeItem) {
-      toast.error("Please select your category");
-      return;
-    }
-    if (!content.trim()) {
-      toast.error("Please provide content");
-      return;
-    }
+  const wordCount = useMemo(() => {
+    const text = (content || "").replace(/<[^>]+>/g, " ").trim();
+    return text ? text.split(/\s+/).filter(Boolean).length : 0;
+  }, [content]);
 
-    // Check if an image is uploaded
-    if (!file) {
-      setError("image", {
-        type: "manual",
-        message: "Category image is required",
-      });
-      return;
-    } else {
-      clearErrors("image");
-    }
-    let like = 0;
-    // Prepare data to be sent
-    const finalData = {
-      ...data,
-      date: today,
-      email: user.email,
-      content,
-      like: {
-        count: 0,
-        email: [],
+  const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+
+  const joditConfig = useMemo(
+    () => ({
+      readonly: false,
+      placeholder:
+        "Write your story here... format headings, add code blocks, quotes, and links...",
+      minHeight: 520,
+      toolbarAdaptive: false,
+      style: {
+        fontFamily: "inherit",
+        fontSize: "16px",
+        color: "#1e293b",
       },
-      status: "pending",
-      category: activeItem.label,
-    };
-    delete finalData.image;
-    try {
-      // Handle file upload
-      const image = data.image[0];
-      console.log(image);
-      const formData = new FormData();
-      formData.append("image", image);
+      buttons: [
+        "bold",
+        "italic",
+        "underline",
+        "strikethrough",
+        "|",
+        "ul",
+        "ol",
+        "|",
+        "font",
+        "fontsize",
+        "paragraph",
+        "|",
+        "image",
+        "link",
+        "table",
+        "|",
+        "align",
+        "undo",
+        "redo",
+        "|",
+        "hr",
+        "eraser",
+        "fullsize",
+      ],
+      showCharsCounter: false,
+      showWordsCounter: false,
+      showXPathInStatusbar: false,
+    }),
+    []
+  );
 
-      const imageResponse = await fetch(url, {
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      setPreviewImage(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveImage = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPreviewImage(null);
+    setImageFile(null);
+  };
+
+  const handleAddTag = (tagToAdd) => {
+    const raw = typeof tagToAdd === "string" ? tagToAdd : tagInput;
+    const clean = raw
+      .trim()
+      .toLowerCase()
+      .replace(/^#+/, "")
+      .replace(/[^a-z0-9-]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    if (!clean) return;
+
+    if (tags.includes(clean)) {
+      toast.error(`Tag #${clean} is already added`);
+      setTagInput("");
+      return;
+    }
+
+    if (tags.length >= 6) {
+      toast.error("You can add up to 6 tags per story");
+      return;
+    }
+
+    setTags((prev) => [...prev, clean]);
+    setTagInput("");
+  };
+
+  const handleTagKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      handleAddTag();
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setTags((prev) => prev.filter((t) => t !== tagToRemove));
+  };
+
+  const onSubmit = async (data) => {
+    if (!data.title?.trim()) {
+      toast.error("Please enter a story title");
+      return;
+    }
+
+    if (!selectedCategory) {
+      toast.error("Please choose a category in the right sidebar");
+      return;
+    }
+
+    if (!imageFile) {
+      toast.error("Please upload a featured cover image in the right sidebar");
+      return;
+    }
+
+    if (!content.trim() || content === "<p><br></p>") {
+      toast.error("Please write some content before publishing");
+      return;
+    }
+
+    setIsPublishing(true);
+    const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
+    const imgbbKey =
+      import.meta.env.VITE_IMGBB_API_KEY || "f1e08dc7c44c396aa409d50dfcc797da";
+    const uploadUrl = `https://api.imgbb.com/1/upload?key=${imgbbKey}`;
+
+    try {
+      // 1. Upload Cover Image to ImgBB
+      const formData = new FormData();
+      formData.append("image", imageFile);
+
+      const imgRes = await fetch(uploadUrl, {
         method: "POST",
         body: formData,
       });
-      const imageResult = await imageResponse.json();
+      const imgJson = await imgRes.json();
+      const photoUrl = imgJson?.data?.display_url;
 
-      // Check if the image was uploaded successfully
-      const photo = imageResult?.data?.display_url;
-      console.log(photo);
-      if (!photo) {
-        toast.error("Failed to upload image");
-        return;
+      if (!photoUrl) {
+        throw new Error(
+          "Failed to upload cover photo. Please try a different image."
+        );
       }
 
-      // Add photo URL to finalData
-      const blogData = { ...finalData, photo };
+      // 2. Prepare Blog Payload
+      const blogPayload = {
+        title: data.title.trim(),
+        category: selectedCategory.id,
+        tags:
+          tags.length > 0
+            ? tags
+            : [selectedCategory.id.toLowerCase().replace(/[^a-z0-9-]/g, "-")],
+        content: content,
+        photo: photoUrl,
+        date: today,
+        email: user.email,
+        status: "pending",
+        like: {
+          count: 0,
+          email: [],
+        },
+      };
 
-      // Send blog data to the server
-      axios
-        .post("https://blogs-editor-server.vercel.app/blogs", blogData)
-        .then((response) => {
-          console.log(response.data);
-          if (response.data.insertedId) {
-            toast.success("Your Blog is Successfully Upload");
-            navigate("../blogger/show-blog");
-          }
-        });
+      // 3. Post to backend
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/blogs`,
+        blogPayload
+      );
+
+      if (response.data?.insertedId) {
+        toast.success("Story submitted! Sent to editorial queue for approval.");
+        navigate("../blogger/show-blog");
+      }
     } catch (error) {
-      console.error("Error:", error);
-      toast.error("An error occurred. Please try again.");
+      console.error("Submission error:", error);
+      toast.error(error?.message || "Failed to publish story");
+    } finally {
+      setIsPublishing(false);
     }
   };
 
   return (
-    <section className="w-[95%] mx-auto py-10">
-      <div className="max-w-3xl mx-auto shadow rounded-sm border p-2 md:p-7">
-        <h2 className="text-xl md:text-2xl font-semibold text-center">
-          Add Blog
-        </h2>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-4">
+    <div className="space-y-6 pb-16">
+      {/* Top Studio Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div className="flex items-center gap-3">
+          <Link
+            to="../blogger"
+            className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+            title="Back to Studio"
+          >
+            <LuArrowLeft className="text-lg" />
+          </Link>
           <div>
-            <label className="text-sm font-medium leading-none" htmlFor="">
-              Title
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-brand">
+                Creator Studio
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="text-xs text-slate-500 flex items-center gap-1">
+                <LuClock className="text-xs" /> ~{readingTime} min read (
+                {wordCount} words)
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+              Draft New Story
+            </h1>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleSubmit(onSubmit)}
+            disabled={isPublishing}
+            className="px-6 py-2.5 rounded-full font-bold text-xs text-white bg-brand hover:bg-brand-dark transition-all duration-200 shadow-md hover:shadow-brand flex items-center gap-2 disabled:opacity-50"
+          >
+            {isPublishing ? "Publishing Story..." : "Submit for Approval"}
+          </button>
+        </div>
+      </div>
+
+      {/* Main Studio Grid: Left Canvas, Right Inspector */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left 8-col: Content Canvas */}
+        <div className="lg:col-span-8 bg-white rounded-3xl border border-slate-200/80 shadow-card p-6 sm:p-8 space-y-6">
+          {/* Story Title */}
+          <div>
+            <label
+              htmlFor="title"
+              className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2"
+            >
+              Story Title
             </label>
-            <input
-              {...register("title", { required: "Title is required" })}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm border-[#262626] focus:border-[#F50400] focus:outline-none"
-              type="text"
-              placeholder="Title..."
+            <textarea
+              id="title"
+              rows={2}
+              {...register("title", { required: "A title is required" })}
+              placeholder="Title of your story..."
+              className="w-full text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 placeholder:text-slate-300 border-none outline-none focus:ring-0 resize-none p-0 leading-tight bg-transparent"
             />
             {errors.title && (
-              <p className="text-red-500 text-sm mt-1">
+              <p className="text-xs text-red-600 font-medium">
                 {errors.title.message}
               </p>
             )}
           </div>
 
-          <div className="relative">
-            <div
-              className="flex h-10 items-center rounded-md justify-between border border-input bg-background px-3 py-2 text-sm border-[#262626] cursor-pointer"
-              onClick={handleCategory}
-            >
-              <span>{activeItem ? activeItem.label : "Select a Category"}</span>
-              {isOpenCategory ? (
-                <FaChevronUp size={14} />
-              ) : (
-                <FaChevronDown size={14} />
-              )}
-            </div>
+          <hr className="border-slate-100" />
 
-            <div
-              className={`absolute left-0 right-0 mt-2 z-50 bg-white shadow-md border rounded-md overflow-hidden transition-all duration-300 ${
-                isOpenCategory
-                  ? "max-h-[350px] opacity-100"
-                  : "max-h-0 opacity-0"
-              }`}
-            >
-              {categoryItems.map((item) => (
-                <p
-                  key={item.id}
-                  onClick={() => handleSelectItem(item)}
-                  className={`group px-5 mx-1 gap-3 rounded-md flex items-center py-2 my-1 text-sm font-medium cursor-pointer ${
-                    activeItem?.id === item.id
-                      ? "bg-[#F50400] text-white"
-                      : "hover:bg-gray-200"
-                  }`}
-                >
-                  {item.label}
-                </p>
-              ))}
+          {/* Jodit Rich Text Editor */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+              Story Content & Narrative
+            </label>
+            <div className="rounded-2xl overflow-hidden border border-slate-200 focus-within:border-brand/40 transition-colors">
+              <JoditEditor
+                ref={editor}
+                value={content}
+                config={joditConfig}
+                tabIndex={1}
+                onBlur={(newContent) => setContent(newContent)}
+              />
             </div>
           </div>
+        </div>
 
-          <JoditEditor
-            ref={editor}
-            value={content}
-            onChange={(newContent) => setContent(newContent)}
-          />
+        {/* Right 4-col: Inspector Sidebar */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* Box 1: Publication Readiness */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6 space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Publishing Checklist
+            </h3>
 
-          <div className="w-full px-3 mb-8">
-            <label
-              className="cursor-pointer flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-green-400 bg-white p-4 text-center"
-              htmlFor="dropzone-file"
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center gap-2">
+                {selectedCategory ? (
+                  <LuCheckCircle2 className="text-emerald-500 text-sm flex-shrink-0" />
+                ) : (
+                  <LuAlertCircle className="text-slate-300 text-sm flex-shrink-0" />
+                )}
+                <span
+                  className={
+                    selectedCategory
+                      ? "text-slate-800 font-semibold"
+                      : "text-slate-400"
+                  }
+                >
+                  {selectedCategory
+                    ? `Category: ${selectedCategory.label}`
+                    : "Choose topic category"}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {previewImage ? (
+                  <LuCheckCircle2 className="text-emerald-500 text-sm flex-shrink-0" />
+                ) : (
+                  <LuAlertCircle className="text-slate-300 text-sm flex-shrink-0" />
+                )}
+                <span
+                  className={
+                    previewImage
+                      ? "text-slate-800 font-semibold"
+                      : "text-slate-400"
+                  }
+                >
+                  {previewImage ? "Cover photo added" : "Upload cover photo"}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {tags.length > 0 ? (
+                  <LuCheckCircle2 className="text-emerald-500 text-sm flex-shrink-0" />
+                ) : (
+                  <LuAlertCircle className="text-slate-300 text-sm flex-shrink-0" />
+                )}
+                <span
+                  className={
+                    tags.length > 0
+                      ? "text-slate-800 font-semibold"
+                      : "text-slate-400"
+                  }
+                >
+                  {tags.length > 0 ? `${tags.length} tag(s) assigned` : "Add relevant tags (optional)"}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {wordCount > 15 ? (
+                  <LuCheckCircle2 className="text-emerald-500 text-sm flex-shrink-0" />
+                ) : (
+                  <LuAlertCircle className="text-slate-300 text-sm flex-shrink-0" />
+                )}
+                <span
+                  className={
+                    wordCount > 15
+                      ? "text-slate-800 font-semibold"
+                      : "text-slate-400"
+                  }
+                >
+                  {wordCount > 15
+                    ? `${wordCount} words written`
+                    : "Write story content"}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSubmit(onSubmit)}
+              disabled={isPublishing}
+              className="w-full py-3 rounded-2xl font-bold text-xs text-white bg-brand hover:bg-brand-dark transition-all duration-200 shadow-md hover:shadow-brand flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {file ? (
-                <div className="mt-4 w-full relative border border-gray-300 rounded-lg">
-                  <img
-                    src={file}
-                    alt="Preview"
-                    className="w-full p-10 h-[320px]"
-                  />
-                  <div
-                    onClick={handleRemoveFile}
-                    className="absolute bg-[#F50400] p-1 rounded-full -top-4 -right-2 cursor-pointer"
-                  >
-                    <FaPlus className="rotate-45" size={23} />
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <h2 className="mt-4 text-xl font-medium text-gray-700 tracking-wide">
-                    Category image
-                  </h2>
-                  <p className="mt-2 text-gray-500 tracking-wide">
-                    Upload or drag & drop your file (SVG, PNG, JPG, or GIF)
-                  </p>
-                </>
-              )}
+              {isPublishing
+                ? "Publishing Story..."
+                : "Submit Story for Approval"}
+            </button>
+          </div>
 
-              <input
-                id="dropzone-file"
-                type="file"
-                className="hidden"
-                accept="image/png, image/jpeg, image/webp"
-                {...register("image", {
-                  required: "Category image is required",
-                  onChange: (e) => handleFileChange(e), // Ensure the change handler is here
-                })}
-              />
-            </label>
-            {errors.image && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.image.message}
-              </p>
+          {/* Box 2: Featured Cover Image */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                Featured Cover Photo
+              </label>
+              <span className="text-[10px] text-slate-400">16:9 Landscape</span>
+            </div>
+
+            {previewImage ? (
+              <div className="relative rounded-2xl overflow-hidden border border-slate-200 max-h-48 group">
+                <img
+                  src={previewImage}
+                  alt="Cover Preview"
+                  className="w-full h-44 object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-slate-900/80 text-white hover:bg-brand transition-colors backdrop-blur-md"
+                  title="Remove image"
+                >
+                  <LuX className="text-xs" />
+                </button>
+              </div>
+            ) : (
+              <label
+                htmlFor="cover-upload"
+                className="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-slate-200 hover:border-brand/50 bg-slate-50/60 hover:bg-brand-light/20 cursor-pointer transition-all text-center group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-xl text-brand group-hover:scale-110 transition-transform mb-2">
+                  <LuUploadCloud />
+                </div>
+                <p className="text-xs font-bold text-slate-800">
+                  Click to choose cover photo
+                </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  PNG, JPG, or WEBP up to 5MB
+                </p>
+                <input
+                  id="cover-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  className="hidden"
+                />
+              </label>
             )}
           </div>
 
-          <button
-            type="submit"
-            className="w-full rounded font-medium bg-[#F50400] px-5 py-2 text-white transition-all duration-300 ease-in-out"
-          >
-            Create New Blog
-          </button>
-        </form>
+          {/* Box 3: Topic Category */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6 space-y-3 relative">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
+              Topic Category
+            </label>
+
+            <div
+              onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+              className="w-full flex items-center justify-between p-3 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 cursor-pointer transition-colors"
+            >
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+                <LuLayers className="text-brand text-sm" />
+                <span>
+                  {selectedCategory
+                    ? `${selectedCategory.icon} ${selectedCategory.label}`
+                    : "Choose topic category..."}
+                </span>
+              </div>
+              <LuChevronDown
+                className={`text-slate-400 text-xs transition-transform ${
+                  isCategoryOpen ? "rotate-180" : ""
+                }`}
+              />
+            </div>
+
+            {isCategoryOpen && (
+              <div className="absolute left-6 right-6 top-[80px] z-30 bg-white rounded-2xl border border-slate-200 shadow-elevated p-2 max-h-56 overflow-y-auto animate-in fade-in duration-150">
+                {activeCategories.map((cat) => {
+                  const isSelected = selectedCategory?.id === cat.id;
+                  return (
+                    <div
+                      key={cat.id}
+                      onClick={() => {
+                        setSelectedCategory(cat);
+                        setIsCategoryOpen(false);
+                      }}
+                      className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${
+                        isSelected
+                          ? "bg-brand text-white font-bold"
+                          : "text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>{cat.icon}</span>
+                        <span>{cat.label}</span>
+                      </span>
+                      {isSelected && <LuCheck className="text-xs" />}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Box 4: Article Tags (#hashtags) */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <LuTag className="text-brand text-sm" />
+                <span>Story Tags ({tags.length}/6)</span>
+              </label>
+              <span className="text-[10px] text-slate-400">Press Enter</span>
+            </div>
+
+            {/* Tag Input Field */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                  #
+                </span>
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleTagKeyDown}
+                  placeholder="react, tutorial, ai..."
+                  disabled={tags.length >= 6}
+                  className="w-full pl-7 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand placeholder:text-slate-400 bg-slate-50/50 disabled:opacity-50"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => handleAddTag()}
+                disabled={!tagInput.trim() || tags.length >= 6}
+                className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-900 text-white hover:bg-brand disabled:opacity-40 disabled:hover:bg-slate-900 transition-colors flex items-center gap-1"
+              >
+                <LuPlus className="text-xs" />
+                <span>Add</span>
+              </button>
+            </div>
+
+            {/* Tag Chips */}
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-brand-light text-brand border border-brand/20 animate-in fade-in zoom-in-95 duration-150"
+                  >
+                    <span>#{t}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTag(t)}
+                      className="p-0.5 rounded-full hover:bg-brand/20 text-brand transition-colors"
+                      title="Remove tag"
+                    >
+                      <LuX className="text-[11px]" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Quick Suggestion Pills */}
+            <div className="pt-2 border-t border-slate-100">
+              <span className="text-[10px] font-semibold text-slate-400 block mb-1.5">
+                Suggested tags:
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {["react", "javascript", "webdev", "ai", "cloud", "tutorial"]
+                  .filter((st) => !tags.includes(st))
+                  .slice(0, 4)
+                  .map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => handleAddTag(st)}
+                      disabled={tags.length >= 6}
+                      className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors disabled:opacity-40"
+                    >
+                      +{st}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Box 5: Author Info */}
+          <div className="p-4 rounded-2xl bg-slate-100/70 border border-slate-200/60 flex items-center gap-3">
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt=""
+                className="w-9 h-9 rounded-full object-cover ring-2 ring-white"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-brand text-white font-bold text-xs flex items-center justify-center">
+                {(user?.displayName || user?.email || "U")
+                  .charAt(0)
+                  .toUpperCase()}
+              </div>
+            )}
+            <div className="truncate text-xs">
+              <span className="font-bold text-slate-900 block truncate">
+                {user?.displayName || "Author"}
+              </span>
+              <span className="text-[10px] text-slate-500 truncate block">
+                {user?.email}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
-    </section>
+    </div>
   );
 };
 

@@ -47,6 +47,21 @@ async function run() {
     const blogsCollection = client.db("BlogEditor").collection("blogs");
     const usersCollection = client.db("BlogEditor").collection("users");
     const commentsCollection = client.db("BlogEditor").collection("comments");
+    const categoriesCollection = client.db("BlogEditor").collection("categories");
+    const bookmarksCollection = client.db("BlogEditor").collection("bookmarks");
+
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded?.email;
+      if (!email) {
+        return res.status(401).send({ error: true, message: "unauthorized" });
+      }
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      if (user?.role !== "admin") {
+        return res.status(403).send({ error: true, message: "forbidden access" });
+      }
+      next();
+    };
     //  jwt
     app.post("/jwt", (req, res) => {
       const user = req.body;
@@ -72,7 +87,7 @@ async function run() {
       res.send(result);
     });
     // Update user to admin
-    app.patch("/users/admin/:id", async (req, res) => {
+    app.patch("/users/admin/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       // console.log(filter);
@@ -91,7 +106,7 @@ async function run() {
       const email = req.params.email;
 
       if (req.decoded.email !== email) {
-        res.send({ admin: false });
+        return res.send({ admin: false });
       }
       const query = { email: email };
       const user = await usersCollection.findOne(query);
@@ -100,7 +115,7 @@ async function run() {
     });
 
     // User Delete
-    app.delete("/users/:email", async (req, res) => {
+    app.delete("/users/:email", verifyJWT, verifyAdmin, async (req, res) => {
       const email = req.params.email; // Get the email from the request parameters
       const query = { email: email }; // Create a query object with the email
 
@@ -135,19 +150,13 @@ async function run() {
       const email = req.params.email;
 
       if (req.decoded.email !== email) {
-        res.send({ blogger: false });
+        return res.send({ blogger: false });
       }
       const query = { email: email };
       const user = await usersCollection.findOne(query);
       const result = { blogger: user?.role === "blogger" };
       res.send(result);
     });
-    // Blogs
-    app.get("/blogs", async (req, res) => {
-      const result = await blogsCollection.find().toArray();
-      res.send(result);
-    });
-
     // Blogs
     app.get("/blogs", async (req, res) => {
       const result = await blogsCollection.find().toArray();
@@ -364,6 +373,141 @@ app.delete("/comments", async (req, res) => {
       const result = await commentsCollection.find().toArray();
       res.send(result);
     });
+    // Dynamic Categories APIs
+    const initialCategories = [
+      { title: "programming", label: "Programming & Code", icon: "💻", image: "https://i.ibb.co/mGLLb3J/programming.png" },
+      { title: "technology", label: "Technology & Gadgets", icon: "⚡", image: "https://i.ibb.co/RgGYFZX/technology.png" },
+      { title: "devops", label: "Cloud & DevOps", icon: "☁️", image: "https://i.ibb.co/W2gcY2f/devops.png" },
+      { title: "travel", label: "Travel & Tours", icon: "✈️", image: "https://i.ibb.co/ch45DSX/airplane.png" },
+      { title: "education", label: "Education & Learning", icon: "🎓", image: "https://i.ibb.co/zxLhYWh/education.png" },
+      { title: "lifestyle", label: "Lifestyle & Culture", icon: "🌿", image: "https://i.ibb.co/QjXbcds/lifestyle.png" },
+      { title: "fitness", label: "Health & Fitness", icon: "💪", image: "https://i.ibb.co/4Pszfzw/fitness.png" },
+      { title: "fashion", label: "Fashion & Style", icon: "👗", image: "https://i.ibb.co/VJ7cnjw/dress.png" },
+      { title: "food", label: "Food & Culinary", icon: "🍔", image: "https://i.ibb.co/g7MCw38/food.png" },
+    ];
+
+    try {
+      const catCount = await categoriesCollection.countDocuments();
+      if (catCount === 0) {
+        await categoriesCollection.insertMany(initialCategories);
+      }
+    } catch (e) {
+      console.error("Categories initial seed error:", e);
+    }
+
+    // GET all categories
+    app.get("/categories", async (req, res) => {
+      try {
+        const result = await categoriesCollection.find().toArray();
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ message: "Failed to fetch categories" });
+      }
+    });
+
+    // POST new category (Admin only)
+    app.post("/categories", verifyJWT, verifyAdmin, async (req, res) => {
+      const category = req.body;
+      if (!category.title || !category.label) {
+        return res.status(400).send({ message: "Category title and label are required" });
+      }
+
+      const slug = category.title.toLowerCase().trim().replace(/\s+/g, "-");
+      const existing = await categoriesCollection.findOne({ title: slug });
+      if (existing) {
+        return res.status(400).send({ message: "Category with this slug already exists" });
+      }
+
+      const newCategory = {
+        title: slug,
+        label: category.label.trim(),
+        icon: category.icon?.trim() || "📌",
+        image: category.image?.trim() || "https://i.ibb.co/mGLLb3J/programming.png",
+        createdAt: new Date().toISOString(),
+      };
+
+      const result = await categoriesCollection.insertOne(newCategory);
+      res.send({ insertedId: result.insertedId, message: "Category created successfully", category: newCategory });
+    });
+
+    // DELETE category (Admin only)
+    app.delete("/categories/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      try {
+        const query = { _id: new ObjectId(id) };
+        const result = await categoriesCollection.deleteOne(query);
+        if (result.deletedCount === 1) {
+          res.send({ message: "Category deleted successfully", deletedCount: 1 });
+        } else {
+          res.status(404).send({ message: "Category not found" });
+        }
+      } catch (err) {
+        res.status(500).send({ message: "Error deleting category" });
+      }
+    });
+
+    // Bookmarks Endpoints
+    // 1. Get all bookmarked blogs for a user
+    app.get("/bookmarks", async (req, res) => {
+      const email = req.query.email;
+      if (!email) {
+        return res.status(400).send({ message: "Email query param is required" });
+      }
+      try {
+        const userBookmarks = await bookmarksCollection.find({ email }).toArray();
+        if (userBookmarks.length === 0) {
+          return res.send([]);
+        }
+        const blogIds = userBookmarks.map((b) => new ObjectId(b.blogId));
+        const bookmarkedBlogs = await blogsCollection.find({ _id: { $in: blogIds } }).toArray();
+        res.send(bookmarkedBlogs);
+      } catch (err) {
+        console.error("Error fetching bookmarks:", err);
+        res.status(500).send({ message: "Failed to fetch bookmarks" });
+      }
+    });
+
+    // 2. Get list of bookmarked blogIds for instant status check
+    app.get("/bookmarks/ids", async (req, res) => {
+      const email = req.query.email;
+      if (!email) {
+        return res.send([]);
+      }
+      try {
+        const userBookmarks = await bookmarksCollection.find({ email }).toArray();
+        const ids = userBookmarks.map((b) => b.blogId);
+        res.send(ids);
+      } catch (err) {
+        res.status(500).send({ message: "Failed to fetch bookmark IDs" });
+      }
+    });
+
+    // 3. Toggle bookmark (add if not exists, remove if exists)
+    app.post("/bookmarks/toggle", async (req, res) => {
+      const { email, blogId } = req.body;
+      if (!email || !blogId) {
+        return res.status(400).send({ message: "Email and blogId are required" });
+      }
+      try {
+        const existing = await bookmarksCollection.findOne({ email, blogId });
+        if (existing) {
+          await bookmarksCollection.deleteOne({ _id: existing._id });
+          return res.send({ bookmarked: false, message: "Removed from bookmarks" });
+        } else {
+          const newBookmark = {
+            email,
+            blogId,
+            createdAt: new Date().toISOString(),
+          };
+          await bookmarksCollection.insertOne(newBookmark);
+          return res.send({ bookmarked: true, message: "Added to reading list" });
+        }
+      } catch (err) {
+        console.error("Error toggling bookmark:", err);
+        res.status(500).send({ message: "Failed to toggle bookmark" });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(

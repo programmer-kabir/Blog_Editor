@@ -1,125 +1,151 @@
 import React from "react";
-import bechara1 from "../../assets/Team-Member/Andrei-M.png";
-// import bechara2 from "../../assets/Team-Member/2.png";
-// import bechara3 from "../../assets/Team-Member/3.png";
-// import bechara4 from "../../assets/Team-Member/4.png";
+import { LuSparkles, LuTarget, LuRocket, LuCompass } from "react-icons/lu";
+
 const teamMembers = [
   {
     image: "https://i.ibb.co.com/0B28kqL/Saranya-B.png",
     name: "Saranya Babu",
+    role: "Head of Editorial",
   },
   {
     image: "https://i.ibb.co.com/cLjMNQ2/Andrei-M.png",
     name: "Andrei Mierla",
+    role: "Lead Platform Architect",
   },
   {
     image: "https://i.ibb.co.com/y8FSQFr/John.png",
     name: "John Foster",
+    role: "Community Director",
   },
   {
     image: "https://i.ibb.co.com/Xkhr70s/Roxi-1.png",
     name: "Roxi Laza",
+    role: "Head of Product Design",
   },
 ];
+
 const AboutUs = () => {
   return (
-    <section className="w-[90%] mx-auto py-8">
-      <div className="text-center">
-        <h2 className="text-2xl text-[#000000] font-bold  sm:text-[26px]">
-          About Us
-        </h2>
-        <p className="text-base mt-2 mb-2 text-[#1F2937]">
-          Welcome to BloxPlex, where innovation meets creativity.
-        </p>
-      </div>
-      {/* Content */}
-      <section className="space-y-7">
-        <div className="flex items-center gap-10 justify-end">
-          <div className="md:w-[40%] space-y-5">
-            <h2 className="text-4xl text-[#000000] font-semibold">
-              Our vision
+    <div className="min-h-screen bg-slate-50/40 py-12">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+        
+        {/* Page Header */}
+        <div className="text-center max-w-2xl mx-auto space-y-3">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-brand-light text-brand text-xs font-semibold">
+            <LuSparkles className="text-xs" />
+            <span>Our Mission & Vision</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">
+            Empowering Voices, Elevating Stories
+          </h1>
+          <p className="text-base text-slate-600 leading-relaxed">
+            Welcome to Blog Editor — the modern digital storytelling platform connecting thoughtful writers and curious minds around the globe.
+          </p>
+        </div>
+
+        {/* Section 1: Vision */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center p-8 sm:p-12 rounded-3xl bg-white border border-slate-200/80 shadow-card">
+          <div className="space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-brand-light text-brand flex items-center justify-center text-xl">
+              <LuTarget />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Our Vision
             </h2>
-            <p className="text-[#1F2937] text-justify text-[17px]">
-              Today less than 4% of ad clicks turn into conversions. We believe
-              that personalization is the future of marketing and that every
-              potential customer can engage with relevant, conversion-optimized
-              landing pages after clicking on an ad.
+            <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+              We envision a world where every thinker, developer, and creative artist has access to frictionless publishing tools. By merging speed, design clarity, and community-driven curation, we ensure that great ideas get the audience they deserve.
             </p>
           </div>
-          <div className="md:w-[60%] ">
-            <div className="w-[550px] ml-auto">
-              <img src="https://i.ibb.co.com/0YJQhKd/Group-9494.png" alt="" />
-            </div>
+          <div className="flex justify-center">
+            <img
+              src="https://i.ibb.co.com/0YJQhKd/Group-9494.png"
+              alt="Our Vision"
+              className="max-h-80 w-auto object-contain"
+            />
           </div>
         </div>
-        {/*  Our story*/}
-        <div className="flex items-center gap-10 justify-end">
-          <div className="md:w-[60%] ">
-            <div className="w-[510px] mr-auto">
-              <img src="https://i.ibb.co.com/DgjYD6t/Group-9805.png" alt="" />
+
+        {/* Section 2: Story */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center p-8 sm:p-12 rounded-3xl bg-white border border-slate-200/80 shadow-card">
+          <div className="order-2 md:order-1 flex justify-center">
+            <img
+              src="https://i.ibb.co.com/DgjYD6t/Group-9805.png"
+              alt="Our Story"
+              className="max-h-80 w-auto object-contain"
+            />
+          </div>
+          <div className="order-1 md:order-2 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+              <LuCompass />
             </div>
-          </div>
-          <div className="md:w-[40%] space-y-5">
-            <h2 className="text-4xl text-[#000000] font-semibold">Our story</h2>
-            <p className="text-[#1F2937] text-justify text-[17px]">
-              From the very beginning we’ve been focused on helping teams and
-              agencies increase conversions and lower the cost of customer
-              acquisition. We started out empowering customers to do this by
-              giving them the power to make beautiful landing pages quickly.
-              From the lessons these successes taught us, we envisioned a new
-              path forward for the digital advertising industry at large.
-            </p>
-          </div>
-        </div>
-        {/* Our future */}
-        {/*  */}
-        <div className="flex items-center gap-10 justify-end">
-          <div className="md:w-[40%] space-y-5">
-            <h2 className="text-4xl text-[#000000] font-semibold">
-              Our future
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Our Story
             </h2>
-            <p className="text-[#1F2937] text-justify text-[17px]">
-              We enable our customers to create, personalize, and optimize
-              landing pages at scale, in minutes, without a developer. With our
-              unique combination of conversion expertise and advanced landing
-              page technology, we’re making that world a reality.
+            <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+              From our beginnings in Sylhet, Bangladesh, we were inspired to create a publishing space without noise or intrusive distractions. Today, thousands of readers explore articles spanning high-speed web tech, DevOps, travel diaries, and mindful living.
             </p>
           </div>
-          <div className="md:w-[60%] ">
-            <div className="w-[550px] ml-auto">
-              <img src="https://i.ibb.co.com/sm4C4vh/Group-9807.png" alt="" />
+        </div>
+
+        {/* Section 3: Future */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center p-8 sm:p-12 rounded-3xl bg-white border border-slate-200/80 shadow-card">
+          <div className="space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+              <LuRocket />
             </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Our Future
+            </h2>
+            <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+              We continue investing in next-generation editorial toolkits, AI-assisted writing enhancements, and fast cloud rendering so you can write, preview, and publish within seconds.
+            </p>
+          </div>
+          <div className="flex justify-center">
+            <img
+              src="https://i.ibb.co.com/sm4C4vh/Group-9807.png"
+              alt="Our Future"
+              className="max-h-80 w-auto object-contain"
+            />
           </div>
         </div>
-      </section>
-      {/* Meet the leadership team */}
-      <div className="text-center space-y-7 lg:w-[75%] mx-auto mt-20">
-        <h2 className="text-4xl text-[#000000] font-semibold">
-          Meet the leadership team
-        </h2>
-        <p className="text-[#1F2937] text-center text-[17px]">
-          Built on the belief that marketers don’t have to settle for the status
-          quo, our senior leadership team champion an inclusive and innovative
-          culture that embraces accountability, encourages employees to think
-          big, and strives to consistently make a positive impact for our
-          customers, partners, and each other.
-        </p>
-        {/* Team Member */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 ga">
-          {teamMembers.map((team, index) => (
-            <div key={index} className="space-y-2 text-left pt-5">
-              <img src={team.image} alt="" />
-              <h2 className="text-2xl pt-1 text-[#000000] font-semibold">
-                {team.name}
-              </h2>
-              <p className="text-base font-light text-[#425d87]">
-                General Manager
-              </p>
-            </div>
-          ))}
+
+        {/* Leadership Team */}
+        <div className="text-center space-y-8 pt-6">
+          <div className="max-w-2xl mx-auto space-y-2">
+            <h2 className="text-3xl font-extrabold text-slate-900">
+              Meet the Leadership Team
+            </h2>
+            <p className="text-sm text-slate-600">
+              Passionate professionals working behind the scenes to deliver exceptional reading and publishing experiences.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {teamMembers.map((team, index) => (
+              <div
+                key={index}
+                className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-card hover:shadow-elevated transition-all flex flex-col items-center text-center group"
+              >
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100 mb-4 ring-4 ring-slate-100 group-hover:ring-brand/20 transition-all">
+                  <img
+                    src={team.image}
+                    alt={team.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  />
+                </div>
+                <h3 className="font-bold text-slate-900 text-base">
+                  {team.name}
+                </h3>
+                <p className="text-xs text-brand font-semibold mt-0.5">
+                  {team.role}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
+
       </div>
-    </section>
+    </div>
   );
 };
 

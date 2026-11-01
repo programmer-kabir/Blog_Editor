@@ -1,255 +1,389 @@
 import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { FaArrowRight, FaEye, FaEyeSlash } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
-import useAuth from "../../../Components/Hooks/useAuth";
+import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import axios from "axios";
+import useAuth from "../../../Components/Hooks/useAuth";
+import logo from "../../../assets/Logo/logo1.png";
+import {
+  LuUser,
+  LuMail,
+  LuLock,
+  LuPhone,
+  LuImage,
+  LuEye,
+  LuEyeOff,
+  LuArrowRight,
+  LuSparkles,
+  LuCheckCircle2,
+  LuPenSquare,
+} from "react-icons/lu";
+
 const Signup = () => {
   const { RegisterUser, updateUserProfile } = useAuth();
   const [activeTab, setActiveTab] = useState("user");
   const [showPassword, setShowPassword] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Toggle password visibility
-  const togglePasswordVisibility = () => {
-    setShowPassword((prevState) => !prevState);
-  };
   const navigate = useNavigate();
+
   const {
     handleSubmit,
     register,
-    formState: { errors: formError },
+    formState: { errors },
   } = useForm();
-  const url =
-    "https://api.imgbb.com/1/upload?key=f1e08dc7c44c396aa409d50dfcc797da";
-  const onSubmit = (data) => {
-    const today = new Date().toLocaleDateString("en-CA"); // Format: YYYY-MM-DD
-    let finalData = {
-      ...data,
-      date: today,
-      role: activeTab,
-    };
-    delete finalData.image;
 
-    // console.log(formData);
-
-    const image = data.image[0];
-    const formData = new FormData();
-    formData.append("image", image);
-    fetch(url, {
-      method: "POST",
-      body: formData,
-    })
-      .then((res) => res.json())
-      .then((image) => {
-        const photo = image?.data?.display_url;
-        // Add the photo URL to finalData
-        finalData = {
-          ...finalData,
-          photo, // Add the photo URL instead of the image file
-        };
-        RegisterUser(data.email, data.password)
-          .then((result) => {
-            const user = result.user;
-            updateUserProfile(data.name, photo).then((response) => {
-              axios
-                .post("https://blogs-editor-server.vercel.app/users", finalData)
-                .then((data) => {
-                  if (data.data.insertedId) {
-                    toast.success("Register Successfully");
-                    navigate("/");
-                    console.log(data.data);
-                  }
-                })
-                .catch((error) => {
-                  console.log(error);
-                });
-            });
-          })
-          .catch((error) => {
-            toast.error("Email Already Exit");
-          });
-      })
-      .catch((error) => {
-        toast.error("unfortunately Some Issue");
-      });
+  const togglePasswordVisibility = () => {
+    setShowPassword((prev) => !prev);
   };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+    }
+  };
+
+  const onSubmit = async (data) => {
+    setIsSubmitting(true);
+    const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
+    const imgbbApiKey =
+      import.meta.env.VITE_IMGBB_API_KEY || "f1e08dc7c44c396aa409d50dfcc797da";
+    const uploadUrl = `https://api.imgbb.com/1/upload?key=${imgbbApiKey}`;
+
+    try {
+      let photoUrl = "";
+
+      // 1. Upload photo if provided
+      if (data.image && data.image[0]) {
+        const formData = new FormData();
+        formData.append("image", data.image[0]);
+
+        const uploadRes = await fetch(uploadUrl, {
+          method: "POST",
+          body: formData,
+        });
+        const uploadJson = await uploadRes.json();
+        photoUrl = uploadJson?.data?.display_url || "";
+      }
+
+      // 2. Register user in Firebase Auth
+      const result = await RegisterUser(data.email, data.password);
+      if (!result?.user) throw new Error("Registration failed in Firebase");
+
+      // 3. Update Firebase profile
+      await updateUserProfile(data.name, photoUrl || null);
+
+      // 4. Save user metadata into MongoDB via backend API
+      const finalUserData = {
+        name: data.name,
+        email: data.email,
+        number: data.number || "",
+        role: activeTab,
+        photo: photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name)}&background=F50400&color=fff`,
+        date: today,
+      };
+
+      const backendRes = await axios.post(
+        `${import.meta.env.VITE_API_URL}/users`,
+        finalUserData
+      );
+
+      if (backendRes.status === 200 || backendRes.data?.insertedId) {
+        toast.success("Account created successfully! Welcome to Blog Editor.");
+        navigate("/");
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
+      let errMsg = "Failed to create account. Please try again.";
+      if (error?.code === "auth/email-already-in-use") {
+        errMsg = "This email is already registered. Please sign in instead.";
+      } else if (error?.code === "auth/weak-password") {
+        errMsg = "Password should be at least 6 characters long.";
+      }
+      toast.error(errMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <section className="mt-[80px] w-full md:max-w-xl mx-auto px-2">
-      {/* Buttons */}
-      <div className="bg-[#F5F5F5] p-1 flex items-center justify-between">
-        <button
-          onClick={() => setActiveTab("user")}
-          className={`px-4 py-2 rounded w-1/2 text-[12px] md:text-sm ${
-            activeTab === "user"
-              ? "bg-white text-black shadow"
-              : "bg-transparent text-[#737373]"
-          }`}
-        >
-          Register as User
-        </button>
+    <div className="min-h-[calc(100vh-65px)] bg-slate-50/50 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+      <div className="w-full max-w-5xl rounded-3xl bg-white border border-slate-200/80 shadow-elevated overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+        
+        {/* Left Side: Brand Panel */}
+        <div className="lg:col-span-5 bg-slate-950 text-white p-8 sm:p-12 flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-brand/15 blur-3xl rounded-full pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-red-600/10 blur-3xl rounded-full pointer-events-none" />
 
-        {/* Blogger Tab */}
-        <button
-          onClick={() => setActiveTab("blogger")}
-          className={`px-4 py-2 rounded w-1/2 text-[12px] md:text-sm${
-            activeTab === "blogger"
-              ? "bg-white text-black shadow"
-              : "bg-transparent text-[#737373]"
-          }`}
-        >
-          Register as Blogger
-        </button>
-      </div>
-      {/* Tabs Content User */}
-      <div className="bg-white mt-5 w-full space-y-4 rounded-md border py-7">
-        <div className="border-b-2 w-full flex flex-col items-center space-y-1 text-center pb-4">
-          <h2 className="text-2xl font-semibold text-primary capitalize">
-            Register as {activeTab == "user" ? "User" : "Blogger"}
-          </h2>
-          <Link
-            to="/signin"
-            className="text-primary hover:underline flex items-center gap-2"
-          >
-            Already have an account?
-            <FaArrowRight size={14} />
-          </Link>
-        </div>
-        <form onSubmit={handleSubmit(onSubmit)} className="px-7 pt-7 space-y-5">
-          {/* Email And Name */}
-          <div className="md:flex items-center  gap-4">
-            {/* Name */}
-            <div className="md:w-1/2">
-              <label
-                htmlFor="name"
-                className="block text-xs font-medium text-gray-700"
-              >
-                Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                {...register("name", { required: true })}
-                placeholder="Enter Your Name"
-                className="px-2 py-2 text-sm outline-none border border-gray-300 rounded w-full mt-2"
-              />
-              {formError.name && (
-                <span className="text-[#f50400] text-sm">Name is required</span>
-              )}
-            </div>
-            {/* Email */}
-            <div className="md:w-1/2 pt-5 md:pt-0">
-              <label
-                htmlFor="email"
-                className="block text-xs font-medium text-gray-700"
-              >
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                {...register("email", { required: true })}
-                placeholder="Enter Your Email"
-                className="px-2 py-2 text-sm outline-none border border-gray-300 rounded w-full mt-2"
-              />
-              {formError.email && (
-                <span className="text-[#f50400] text-sm">
-                  Email is required
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Password */}
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-xs font-medium text-gray-700"
-            >
-              Password
-            </label>
-            <div className="px-2 py-2 flex items-center justify-between outline-none text-sm border border-gray-300 rounded">
-              <input
-                type={showPassword ? "text" : "password"}
-                id="password"
-                {...register("password", { required: true })}
-                placeholder="Enter Your Password"
-                className="outline-none flex-grow"
-              />
-              <button
-                type="button"
-                onClick={togglePasswordVisibility}
-                className="text-gray-700"
-              >
-                {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
-              </button>
-            </div>
-            {formError.password && (
-              <span className="text-[#f50400] text-sm">
-                Password is required
+          {/* Brand Header */}
+          <div className="relative z-10 space-y-6">
+            <Link to="/" className="inline-flex items-center gap-2.5">
+              <div className="p-1.5 rounded-xl bg-white shadow-sm inline-flex">
+                <img className="h-7 w-auto object-contain" src={logo} alt="Logo" />
+              </div>
+              <span className="text-xl font-bold tracking-tight text-white">
+                Blog<span className="text-brand">Editor</span>
               </span>
-            )}
-          </div>
-          {/* Contact Number And Profile Photo */}
-          <div className="md:flex items-center  gap-4">
-            {/* Contact Number */}
-            <div className="md:w-1/2">
-              <label
-                htmlFor="number"
-                className="block text-xs font-medium text-gray-700"
-              >
-                Contact Number
-              </label>
-              <input
-                type="text"
-                id="number"
-                {...register("number")}
-                placeholder="Enter Your Number"
-                className="px-2 py-2 text-sm outline-none border border-gray-300 rounded w-full mt-2"
-              />
+            </Link>
+
+            <div className="space-y-3 pt-6">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand/10 text-brand border border-brand/20 text-xs font-semibold">
+                <LuSparkles className="text-xs" />
+                <span>Join the Community</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight">
+                Create Your Account & Start Sharing Ideas
+              </h2>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                Whether you're here to read curated essays or publish your own stories to a global audience, your journey starts here.
+              </p>
             </div>
-            {/* Email */}
-            <div className="md:w-1/2 pt-5 md:pt-0">
-              <label
-                htmlFor="photo"
-                className="block text-xs font-medium text-gray-700"
-              >
-                Profile Photo
+          </div>
+
+          {/* Account Benefits */}
+          <div className="relative z-10 space-y-3.5 pt-8 pb-4 text-xs text-slate-300">
+            <div className="flex items-center gap-2.5">
+              <LuCheckCircle2 className="text-brand text-base flex-shrink-0" />
+              <span>Full access to all articles and interactive discussions</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <LuCheckCircle2 className="text-brand text-base flex-shrink-0" />
+              <span>Blogger Studio access with rich WYSIWYG editor</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <LuCheckCircle2 className="text-brand text-base flex-shrink-0" />
+              <span>Real-time claps, bookmarks, and engagement analytics</span>
+            </div>
+          </div>
+
+          <div className="relative z-10 pt-6 border-t border-slate-800/80 text-[11px] text-slate-500">
+            <span>By registering, you agree to our Terms of Service & Privacy Policy.</span>
+          </div>
+        </div>
+
+        {/* Right Side: Registration Form */}
+        <div className="lg:col-span-7 p-6 sm:p-10 lg:p-12 flex flex-col justify-center">
+          
+          {/* Header */}
+          <div className="space-y-2 mb-6">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Create Your Account
+            </h1>
+            <p className="text-sm text-slate-500">
+              Already have an account?{" "}
+              <Link to="/signin" className="text-brand font-semibold hover:underline">
+                Sign in here
+              </Link>
+            </p>
+          </div>
+
+          {/* Role Switcher Tabs */}
+          <div className="mb-6 p-1.5 rounded-2xl bg-slate-100 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab("user")}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === "user"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <LuUser className="text-sm text-brand" />
+              <span>Register as Reader</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("blogger")}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === "blogger"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <LuPenSquare className="text-sm text-brand" />
+              <span>Register as Blogger</span>
+            </button>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            
+            {/* Name & Phone Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label htmlFor="name" className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <LuUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base" />
+                  <input
+                    id="name"
+                    type="text"
+                    {...register("name", { required: "Name is required" })}
+                    placeholder="Alex Rivera"
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm text-slate-800 focus:outline-none transition-colors ${
+                      errors.name
+                        ? "border-red-400 focus:ring-1 focus:ring-red-400"
+                        : "border-slate-200 focus:border-brand focus:ring-2 focus:ring-brand/20"
+                    }`}
+                  />
+                </div>
+                {errors.name && (
+                  <p className="text-xs text-red-600 font-medium">{errors.name.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="number" className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Contact Number <span className="text-slate-400 font-normal lowercase">(optional)</span>
+                </label>
+                <div className="relative">
+                  <LuPhone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base" />
+                  <input
+                    id="number"
+                    type="text"
+                    {...register("number")}
+                    placeholder="+880 1700-000000"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Email Field */}
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Email Address
               </label>
-              <input
-                type="file"
-                id="image"
-                {...register("image", { required: true })}
-                className="px-2 py-2 text-sm outline-none border border-gray-300 rounded w-full mt-2"
-              />
-              {formError.image && (
-                <span className="text-[#f50400] text-sm">
-                  image is required
-                </span>
+              <div className="relative">
+                <LuMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base" />
+                <input
+                  id="email"
+                  type="email"
+                  {...register("email", {
+                    required: "Email is required",
+                    pattern: {
+                      value: /\S+@\S+\.\S+/,
+                      message: "Please enter a valid email address",
+                    },
+                  })}
+                  placeholder="alex@company.com"
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm text-slate-800 focus:outline-none transition-colors ${
+                    errors.email
+                      ? "border-red-400 focus:ring-1 focus:ring-red-400"
+                      : "border-slate-200 focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  }`}
+                />
+              </div>
+              {errors.email && (
+                <p className="text-xs text-red-600 font-medium">{errors.email.message}</p>
               )}
             </div>
-          </div>
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="w-full text-white rounded-md bg-[#f50400] hover:bg-[#d80400] px-5 py-2 text-lg transition-all duration-300 ease-in-out"
-          >
-            Sign in
-          </button>
-        </form>
-        {/* {activeTab === "user" && (
-          <div>
-            <h2 className="text-xl font-semibold mb-4">User Registration</h2>
-            <p>Fill in your details to register as a user.</p>
-            <input
-              type="text"
-              placeholder="Enter your name"
-              className="w-full mt-3 p-2 border rounded"
-            />
-          </div>
-        )} */}
+
+            {/* Password Field */}
+            <div className="space-y-1.5">
+              <label htmlFor="password" className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Password
+              </label>
+              <div className="relative">
+                <LuLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base" />
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  {...register("password", {
+                    required: "Password is required",
+                    minLength: {
+                      value: 6,
+                      message: "Password must be at least 6 characters",
+                    },
+                  })}
+                  placeholder="Minimum 6 characters"
+                  className={`w-full pl-10 pr-11 py-2.5 rounded-xl border text-sm text-slate-800 focus:outline-none transition-colors ${
+                    errors.password
+                      ? "border-red-400 focus:ring-1 focus:ring-red-400"
+                      : "border-slate-200 focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors p-1"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <LuEyeOff size={18} /> : <LuEye size={18} />}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-xs text-red-600 font-medium">{errors.password.message}</p>
+              )}
+            </div>
+
+            {/* Avatar Photo Field with Live Preview */}
+            <div className="space-y-1.5">
+              <label htmlFor="image" className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Profile Avatar Photo
+              </label>
+              <div className="flex items-center gap-4 p-3 rounded-2xl border border-slate-200 bg-slate-50/50">
+                {imagePreview ? (
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-12 h-12 rounded-full object-cover ring-2 ring-brand/30 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-brand-light text-brand flex items-center justify-center text-xl flex-shrink-0">
+                    <LuImage />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <input
+                    id="image"
+                    type="file"
+                    accept="image/*"
+                    {...register("image", {
+                      required: "Profile avatar image is required",
+                    })}
+                    onChange={(e) => {
+                      register("image").onChange(e);
+                      handleImageChange(e);
+                    }}
+                    className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand-light file:text-brand hover:file:bg-brand/20 file:cursor-pointer cursor-pointer"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">PNG, JPG, or WEBP up to 5MB</p>
+                </div>
+              </div>
+              {errors.image && (
+                <p className="text-xs text-red-600 font-medium">{errors.image.message}</p>
+              )}
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-3.5 px-6 rounded-xl font-bold text-sm text-white bg-brand hover:bg-brand-dark transition-all duration-200 shadow-md hover:shadow-brand flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Creating Account & Uploading Photo...</span>
+                </>
+              ) : (
+                <>
+                  <span>Complete Registration ({activeTab === "blogger" ? "Blogger" : "Reader"})</span>
+                  <LuArrowRight className="text-base" />
+                </>
+              )}
+            </button>
+          </form>
+
+        </div>
+
       </div>
-    </section>
+    </div>
   );
 };
 

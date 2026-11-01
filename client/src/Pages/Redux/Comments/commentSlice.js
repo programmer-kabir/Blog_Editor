@@ -5,7 +5,7 @@ export const fetchComments = createAsyncThunk(
   async () => {
     try {
       const response = await axios.get(
-        "https://blogs-editor-server.vercel.app/comments"
+        `${import.meta.env.VITE_API_URL}/comments`
       );
       return response.data;
     } catch (error) {

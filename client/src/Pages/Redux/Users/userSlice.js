@@ -3,7 +3,7 @@ import axios from "axios";
 export const fetchUsers = createAsyncThunk("users/fetchUsers", async () => {
   try {
     const response = await axios.get(
-      "https://blogs-editor-server.vercel.app/users"
+      `${import.meta.env.VITE_API_URL}/users`
     );
     console.log(response.data);
     return response?.data;
