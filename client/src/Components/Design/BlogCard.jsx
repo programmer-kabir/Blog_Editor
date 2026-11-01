@@ -7,8 +7,9 @@ import useAuth from "../Hooks/useAuth";
 import { calculateMonthDifference } from "../DateFomate/DateFormate";
 import { RiWhatsappFill } from "react-icons/ri";
 import { FaFacebook, FaLinkedin, FaCheck } from "react-icons/fa";
-import { LuCopy, LuHeart, LuClock, LuBookmark } from "react-icons/lu";
+import { LuCopy, LuHeart, LuClock, LuBookmark, LuEye } from "react-icons/lu";
 import toast from "react-hot-toast";
+import { getBlogSlugUrl } from "../../Utils/slugify";
 
 const BlogCard = ({ data, link }) => {
   const dispatch = useDispatch();
@@ -45,7 +46,7 @@ const BlogCard = ({ data, link }) => {
 
   const blogWriter = Users.find((user) => user?.email === data?.email);
   const monthDifference = calculateMonthDifference(data?.date);
-  const targetLink = link || `/blogs/details/${data?._id}`;
+  const targetLink = link || getBlogSlugUrl(data?._id, data?.title);
   const likeCount =
     typeof data?.like === "object"
       ? data?.like?.count || 0
@@ -56,7 +57,7 @@ const BlogCard = ({ data, link }) => {
   const handleCopyClick = (e, id) => {
     e.preventDefault();
     e.stopPropagation();
-    const copyUrl = `${window.location.origin}/blogs/details/${id}`;
+    const copyUrl = `${window.location.origin}${getBlogSlugUrl(id, data?.title)}`;
     navigator.clipboard
       .writeText(copyUrl)
       .then(() => {
@@ -72,7 +73,9 @@ const BlogCard = ({ data, link }) => {
   const handleShare = (e, platform, title, url) => {
     e.preventDefault();
     e.stopPropagation();
-    const fullUrl = encodeURIComponent(`${window.location.origin}/blogs/details/${data?._id}`);
+    const fullUrl = encodeURIComponent(
+      `${window.location.origin}${getBlogSlugUrl(data?._id, data?.title)}`
+    );
     const encodedTitle = encodeURIComponent(title || "Check out this blog");
 
     let shareUrl = "";
@@ -136,10 +139,15 @@ const BlogCard = ({ data, link }) => {
         <div className="p-5 pb-3">
           {/* Author Row */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-2.5">
+            <Link
+              to={`/author/${encodeURIComponent(data?.email || blogWriter?.email || "")}`}
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-2.5 group/author hover:opacity-90 transition-opacity"
+              title="View Author Profile"
+            >
               {blogWriter?.photo ? (
                 <img
-                  className="h-8 w-8 rounded-full object-cover ring-2 ring-slate-100"
+                  className="h-8 w-8 rounded-full object-cover ring-2 ring-slate-100 group-hover/author:ring-brand transition-all"
                   src={blogWriter.photo}
                   alt={blogWriter?.name || "Author"}
                 />
@@ -149,7 +157,7 @@ const BlogCard = ({ data, link }) => {
                 </div>
               )}
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-slate-800 line-clamp-1">
+                <span className="text-xs font-semibold text-slate-800 group-hover/author:text-brand transition-colors line-clamp-1">
                   {blogWriter?.name || "Editorial Creator"}
                 </span>
                 <span className="text-[10px] text-slate-400">
@@ -158,11 +166,22 @@ const BlogCard = ({ data, link }) => {
                     : `${monthDifference} month${monthDifference > 1 ? "s" : ""} ago`}
                 </span>
               </div>
-            </div>
+            </Link>
           </div>
 
+          {/* Series Badge */}
+          {data?.series?.name && (
+            <div className="mt-3">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80">
+                <span className="text-[11px]">📚</span>
+                <span className="truncate max-w-[140px]">{data.series.name}</span>
+                <span className="text-amber-600 font-extrabold">• Part {data.series.part || 1}</span>
+              </span>
+            </div>
+          )}
+
           {/* Blog Title */}
-          <Link to={targetLink} className="block mt-3 focus:outline-none">
+          <Link to={targetLink} className={`block ${data?.series?.name ? "mt-1.5" : "mt-3"} focus:outline-none`}>
             <h2 className="text-base font-bold text-slate-900 group-hover:text-brand transition-colors line-clamp-2 leading-snug">
               {data?.title}
             </h2>
@@ -228,10 +247,24 @@ const BlogCard = ({ data, link }) => {
           </button>
         </div>
 
-        {/* Like Metric Badge */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200/60 text-xs font-semibold text-slate-700">
-          <LuHeart className="text-brand fill-brand text-xs" />
-          <span>{likeCount}</span>
+        {/* Metrics Badges: Views & Likes */}
+        <div className="flex items-center gap-2">
+          {data?.views !== undefined && (
+            <div
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200/60 text-xs font-semibold text-slate-600"
+              title="Total Article Views"
+            >
+              <LuEye className="text-slate-400 text-xs" />
+              <span>{data.views || 0}</span>
+            </div>
+          )}
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200/60 text-xs font-semibold text-slate-700"
+            title="Total Claps"
+          >
+            <LuHeart className="text-brand fill-brand text-xs" />
+            <span>{likeCount}</span>
+          </div>
         </div>
       </div>
     </article>

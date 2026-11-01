@@ -29,6 +29,7 @@ const AboutUs = lazy(() => import("../Pages/FooterPages/AboutUs"));
 const ContactUs = lazy(() => import("../Pages/FooterPages/ContactUs"));
 const Terms = lazy(() => import("../Pages/FooterPages/Terms"));
 const FAQs = lazy(() => import("../Pages/FooterPages/FAQs"));
+const AuthorProfile = lazy(() => import("../Pages/Author/AuthorProfile"));
 
 const router = createBrowserRouter([
   {
@@ -43,6 +44,10 @@ const router = createBrowserRouter([
       {
         path: "/AddBlog",
         element: <Add />,
+      },
+      {
+        path: "/author/:email",
+        element: <AuthorProfile />,
       },
       {
         path: "/signup",
@@ -92,6 +97,10 @@ const router = createBrowserRouter([
       },
       {
         path: "details/:id",
+        element: <DetailsBlog />,
+      },
+      {
+        path: "details/:id/:slug",
         element: <DetailsBlog />,
       },
     ],

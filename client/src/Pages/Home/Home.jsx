@@ -6,10 +6,16 @@ import BlogCategory from "../../Components/Home/BlogCategory/BlogCategory";
 import PopularBlog from "../../Components/Home/PopularBlog/PopularBlog";
 import Newsletter from "../../Components/Home/Newsletter/Newsletter";
 import CompanyInfo from "../../Components/Home/CompanyInfo/CompanyInfo";
+import SEO from "../../Components/SEO/SEO";
 
 const Home = () => {
   return (
     <div className="min-h-screen bg-slate-50/30">
+      <SEO
+        title="Home - Modern Engineering & Stories"
+        description="Discover high-impact articles, engineering guides, and deep-dive technical tutorials curated for modern developers and creators."
+        url="/"
+      />
       {/* Hero Section */}
       <Banner />
 

@@ -92,6 +92,17 @@ const AllBlogCard = ({ data, link }) => {
             <span>{data?.date}</span>
           </div>
 
+          {/* Series Badge */}
+          {data?.series?.name && (
+            <div className="mb-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80">
+                <span>📚</span>
+                <span className="truncate max-w-[140px]">{data.series.name}</span>
+                <span className="text-amber-600 font-extrabold">• Part {data.series.part || 1}</span>
+              </span>
+            </div>
+          )}
+
           <h3 className="font-bold text-base text-slate-900 group-hover:text-brand transition-colors line-clamp-2 leading-snug">
             {data?.title}
           </h3>
@@ -100,9 +111,15 @@ const AllBlogCard = ({ data, link }) => {
 
       {/* Card Actions Footer */}
       <div className="p-5 pt-3 border-t border-slate-100 flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-xs text-slate-600">
-          <LuHeart className="text-brand fill-brand text-xs" />
-          <span className="font-semibold">{likeCount} Claps</span>
+        <div className="flex items-center gap-3 text-xs text-slate-600">
+          <span className="flex items-center gap-1 font-semibold text-slate-700" title="Total Views">
+            <LuEye className="text-slate-400 text-sm" />
+            <span>{data?.views || 0}</span>
+          </span>
+          <span className="flex items-center gap-1 font-semibold text-slate-700" title="Total Claps">
+            <LuHeart className="text-brand fill-brand text-xs" />
+            <span>{likeCount}</span>
+          </span>
         </div>
 
         <div className="flex items-center gap-2">

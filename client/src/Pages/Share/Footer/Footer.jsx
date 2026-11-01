@@ -160,6 +160,30 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
+                <a
+                  href="/rss.xml"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white hover:underline transition-colors inline-flex items-center gap-1.5"
+                  title="Subscribe via RSS feed"
+                >
+                  <span className="text-amber-500 text-xs">📡</span>
+                  <span>RSS Feed</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/sitemap.xml"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white hover:underline transition-colors inline-flex items-center gap-1.5"
+                  title="View search engine XML sitemap"
+                >
+                  <span className="text-emerald-500 text-xs">🗺️</span>
+                  <span>XML Sitemap</span>
+                </a>
+              </li>
+              <li>
                 <Link to="/dashboard/blogger/add-blog" className="text-brand font-semibold hover:underline transition-colors">
                   Become a Writer &rarr;
                 </Link>

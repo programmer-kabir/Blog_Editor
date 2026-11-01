@@ -16,6 +16,10 @@ import BlogDetailSkeleton from "../Loader/BlogDetailSkeleton";
 import ShowComments from "../Dashboard/ShowComments/ShowComments";
 import AudioArticlePlayer from "./AudioArticlePlayer";
 import RelatedStories from "./RelatedStories";
+import ReactionsSystem from "./ReactionsSystem";
+import SeriesNavigator from "./SeriesNavigator";
+import SEO from "../SEO/SEO";
+import { getBlogSlugUrl } from "../../Utils/slugify";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
@@ -35,6 +39,7 @@ import {
   LuSparkles,
   LuLayers,
   LuHash,
+  LuEye,
 } from "react-icons/lu";
 import { RiWhatsappFill } from "react-icons/ri";
 import { FaFacebook, FaLinkedin } from "react-icons/fa";
@@ -98,6 +103,37 @@ const DetailsBlog = () => {
 
   const [likeCount, setLikeCount] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
+  const [viewsCount, setViewsCount] = useState(0);
+
+  // Increment view with session deduplication
+  useEffect(() => {
+    if (currentBlog?._id) {
+      setViewsCount(currentBlog.views || 0);
+
+      const sessionKey = `viewed_blog_${currentBlog._id}`;
+      if (!sessionStorage.getItem(sessionKey)) {
+        sessionStorage.setItem(sessionKey, "true");
+        axios
+          .post(`${import.meta.env.VITE_API_URL}/blogs/${currentBlog._id}/view`)
+          .then((res) => {
+            if (res.data?.views) {
+              setViewsCount(res.data.views);
+            }
+          })
+          .catch((err) => console.error("Failed to record view:", err));
+      }
+    }
+  }, [currentBlog?._id, currentBlog?.views]);
+
+  // Synchronize address bar with clean SEO-friendly slug
+  useEffect(() => {
+    if (currentBlog?._id && currentBlog?.title) {
+      const cleanPath = getBlogSlugUrl(currentBlog._id, currentBlog.title);
+      if (window.location.pathname !== cleanPath) {
+        window.history.replaceState(null, "", cleanPath);
+      }
+    }
+  }, [currentBlog?._id, currentBlog?.title]);
 
   useEffect(() => {
     if (currentBlog?.like) {
@@ -202,19 +238,26 @@ const DetailsBlog = () => {
   };
 
   const handleCopyClick = () => {
-    const copyUrl = window.location.href;
+    const copyUrl = `${window.location.origin}${getBlogSlugUrl(
+      currentBlog?._id,
+      currentBlog?.title
+    )}`;
     navigator.clipboard
       .writeText(copyUrl)
       .then(() => {
         setCopied(true);
-        toast.success("Article link copied!");
+        toast.success("SEO article link copied!");
         setTimeout(() => setCopied(false), 2000);
       })
       .catch(() => toast.error("Failed to copy"));
   };
 
   const handleSocialShare = (platform) => {
-    const url = encodeURIComponent(window.location.href);
+    const canonicalUrl = `${window.location.origin}${getBlogSlugUrl(
+      currentBlog?._id,
+      currentBlog?.title
+    )}`;
+    const url = encodeURIComponent(canonicalUrl);
     const title = encodeURIComponent(
       currentBlog?.title || "Check out this article on BlogEditor"
     );
@@ -242,6 +285,19 @@ const DetailsBlog = () => {
 
   return (
     <>
+      {/* Dynamic SEO, Open Graph & Twitter Meta Tags */}
+      <SEO
+        title={currentBlog.title}
+        description={currentBlog.content}
+        image={currentBlog.photo}
+        url={getBlogSlugUrl(currentBlog._id, currentBlog.title)}
+        type="article"
+        author={blogWriter?.name || "Editorial Writer"}
+        category={currentBlog.category}
+        tags={currentBlog.tags}
+        publishedTime={currentBlog.date}
+      />
+
       {/* 1. Global Reading Scroll Progress Bar */}
       <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-slate-200/50">
         <div
@@ -274,20 +330,9 @@ const DetailsBlog = () => {
           
           {/* Left Sticky Action Bar (Desktop) - Aligns cleanly next to article */}
           <aside className="hidden md:flex flex-col items-center gap-2.5 p-2 bg-white border border-slate-200/90 rounded-2xl shadow-card sticky top-20 flex-shrink-0 z-10">
-            <button
-              onClick={handleLike}
-              className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl transition-all ${
-                hasLiked
-                  ? "bg-brand text-white shadow-brand"
-                  : "text-slate-600 hover:text-brand hover:bg-slate-50"
-              }`}
-              title="Like story"
-            >
-              <LuHeart className={`text-base ${hasLiked ? "fill-white" : ""}`} />
-              <span className="text-[10px] font-bold leading-none mt-0.5">
-                {likeCount}
-              </span>
-            </button>
+            <ReactionsSystem blogId={currentBlog._id} orientation="vertical" />
+
+            <div className="w-6 h-[1px] bg-slate-200 my-0.5" />
 
             <button
               onClick={handleBookmarkToggle}
@@ -364,6 +409,11 @@ const DetailsBlog = () => {
                 {currentBlog.category || "General"}
               </span>
               <span className="text-slate-300">•</span>
+              <span className="flex items-center gap-1 text-xs text-slate-500 font-semibold" title="Total article readers">
+                <LuEye className="text-brand text-sm" />
+                <span>{viewsCount.toLocaleString()} {viewsCount === 1 ? "view" : "views"}</span>
+              </span>
+              <span className="text-slate-300">•</span>
               <span className="flex items-center gap-1 text-xs text-slate-500">
                 <LuClock className="text-slate-400" /> 5 min read
               </span>
@@ -434,38 +484,46 @@ const DetailsBlog = () => {
 
           {/* Author Info Bar */}
           <div className="flex items-center justify-between pb-6 border-b border-slate-150">
-            <div className="flex items-center gap-3">
+            <Link
+              to={`/author/${encodeURIComponent(currentBlog?.email || blogWriter?.email || "")}`}
+              className="flex items-center gap-3 group"
+              title="View Creator's Profile"
+            >
               {blogWriter?.photo ? (
                 <img
                   src={blogWriter.photo}
                   alt={blogWriter?.name || "Author"}
-                  className="w-11 h-11 rounded-full object-cover ring-2 ring-slate-100"
+                  className="w-11 h-11 rounded-full object-cover ring-2 ring-slate-100 group-hover:ring-indigo-500 transition-all"
                 />
               ) : (
-                <div className="w-11 h-11 rounded-full bg-brand-light text-brand font-bold text-sm flex items-center justify-center ring-2 ring-slate-100">
+                <div className="w-11 h-11 rounded-full bg-brand-light text-brand font-bold text-sm flex items-center justify-center ring-2 ring-slate-100 group-hover:scale-105 transition-transform">
                   {(blogWriter?.name || currentBlog?.email || "A").charAt(0).toUpperCase()}
                 </div>
               )}
               <div>
-                <p className="text-sm font-bold text-slate-900">
-                  {blogWriter?.name || "Editorial Writer"}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                    {blogWriter?.name || "Editorial Writer"}
+                  </p>
+                  <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
+                    View Profile ↗
+                  </span>
+                </div>
                 <p className="text-xs text-slate-400">{currentBlog?.email}</p>
               </div>
-            </div>
+            </Link>
 
-            {/* Top Actions: Like, Bookmark & Share */}
+            {/* Top Actions: Reactions, Bookmark & Share */}
             <div className="flex items-center gap-2">
               <button
-                onClick={handleLike}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                  hasLiked
-                    ? "bg-brand text-white border-brand shadow-sm shadow-brand/20"
-                    : "bg-slate-50 text-slate-700 hover:text-brand border-slate-200"
-                }`}
+                onClick={() => {
+                  document.getElementById("reactions-bar")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-amber-200/90 bg-amber-50 text-amber-800 hover:bg-amber-100 transition-all shadow-sm shadow-amber-200/40"
+                title="View story reactions & applause"
               >
-                <LuHeart className={`text-sm ${hasLiked ? "fill-white" : ""}`} />
-                <span>{likeCount}</span>
+                <span>👏</span>
+                <span>Reactions</span>
               </button>
 
               <button
@@ -501,6 +559,9 @@ const DetailsBlog = () => {
             htmlContent={currentBlog.content}
           />
 
+          {/* Top Series Banner if article belongs to a series */}
+          <SeriesNavigator currentBlog={currentBlog} position="top" />
+
           {/* Featured Cover Image */}
           {currentBlog.photo && (
             <div className="my-8 rounded-2xl overflow-hidden bg-slate-100 max-h-[460px]">
@@ -528,45 +589,41 @@ const DetailsBlog = () => {
             }}
           />
 
-          {/* End of Article Callout / Reaction */}
-          <div className="mt-10 pt-6 border-t border-slate-150 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/60 p-4 rounded-2xl">
-            <div className="flex items-center gap-2 text-xs text-slate-600">
-              <LuSparkles className="text-brand text-sm" />
-              <span>Enjoyed this article? Give the author some claps or save for later!</span>
-            </div>
+          {/* Bottom Series Navigation & Chapter Directory */}
+          <SeriesNavigator currentBlog={currentBlog} position="bottom" />
 
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleLike}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  hasLiked
-                    ? "bg-brand text-white shadow-brand shadow-sm"
-                    : "bg-white text-slate-800 border border-slate-200 hover:border-brand/40 shadow-sm"
-                }`}
-              >
-                <LuHeart className={`text-sm ${hasLiked ? "fill-white" : "text-brand"}`} />
-                <span>{hasLiked ? "Liked" : "Like Article"} ({likeCount})</span>
-              </button>
+          {/* Reactions & Engagement Toolbar */}
+          <div id="reactions-bar" className="mt-10 pt-6 border-t border-slate-150">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="flex-1">
+                <p className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                  <LuSparkles className="text-brand text-sm" />
+                  <span>How did this story resonate with you?</span>
+                </p>
+                <ReactionsSystem blogId={currentBlog._id} orientation="horizontal" />
+              </div>
 
-              <button
-                onClick={handleBookmarkToggle}
-                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                  isBookmarked
-                    ? "bg-brand text-white border-brand shadow-sm"
-                    : "bg-white border-slate-200 text-slate-700 hover:text-brand shadow-sm"
-                }`}
-              >
-                <LuBookmark className={`text-sm ${isBookmarked ? "fill-white" : ""}`} />
-                <span>{isBookmarked ? "Bookmarked" : "Save Story"}</span>
-              </button>
+              <div className="flex items-center gap-2 self-end sm:self-center">
+                <button
+                  onClick={handleBookmarkToggle}
+                  className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold border transition-all ${
+                    isBookmarked
+                      ? "bg-brand text-white border-brand shadow-sm"
+                      : "bg-white border-slate-200 text-slate-700 hover:text-brand shadow-sm"
+                  }`}
+                >
+                  <LuBookmark className={`text-sm ${isBookmarked ? "fill-white" : ""}`} />
+                  <span>{isBookmarked ? "Bookmarked" : "Save Story"}</span>
+                </button>
 
-              <button
-                onClick={() => setIsShareModal(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:text-brand hover:border-brand/40 transition-colors shadow-sm"
-              >
-                <LuShare2 className="text-sm" />
-                <span>Share</span>
-              </button>
+                <button
+                  onClick={() => setIsShareModal(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:text-brand hover:border-brand/40 transition-colors shadow-sm"
+                >
+                  <LuShare2 className="text-sm" />
+                  <span>Share</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -627,7 +684,7 @@ const DetailsBlog = () => {
           <RelatedStories currentBlog={currentBlog} />
 
           {/* Add Comment Form */}
-          <div className="mt-10 pt-8 border-t border-slate-150">
+          <div id="comments" className="mt-10 pt-8 border-t border-slate-150">
             <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
               <LuMessageSquare className="text-brand" />
               <span>Leave a Thought</span>
@@ -671,7 +728,10 @@ const DetailsBlog = () => {
           </div>
 
           {/* Comments Section */}
-          <ShowComments id={currentBlog._id} />
+          <ShowComments
+            id={currentBlog._id}
+            articleAuthorEmail={currentBlog.email || blogWriter?.email}
+          />
 
         </div>
 

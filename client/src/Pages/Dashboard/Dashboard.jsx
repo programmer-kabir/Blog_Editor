@@ -16,9 +16,11 @@ import {
   LuChevronDown,
   LuLayers,
   LuBookmark,
+  LuUser,
 } from "react-icons/lu";
 import { HiOutlineBars3BottomRight, HiXMark } from "react-icons/hi2";
 import { MdLogout } from "react-icons/md";
+import NotificationDropdown from "../../Components/Notification/NotificationDropdown";
 
 const Dashboard = () => {
   const [isAdmin] = useAdmin();
@@ -234,6 +236,8 @@ const Dashboard = () => {
                 <span>Live Site</span>
               </Link>
 
+              <NotificationDropdown />
+
               {/* Avatar Menu */}
               <div className="relative" ref={dropdownRef}>
                 <button
@@ -275,6 +279,16 @@ const Dashboard = () => {
                     </div>
 
                     <div className="py-1">
+                      {user?.email && (
+                        <Link
+                          to={`/author/${user.email}`}
+                          onClick={() => setIsProfileOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-brand transition-colors"
+                        >
+                          <LuUser className="text-sm text-slate-400" />
+                          My Public Profile
+                        </Link>
+                      )}
                       <Link
                         to="/dashboard/bookmarks"
                         onClick={() => setIsProfileOpen(false)}

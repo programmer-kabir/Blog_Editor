@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import logo from "../../../assets/Logo/logo1.png";
-import { LuLogIn, LuLayoutDashboard, LuPenSquare, LuChevronDown, LuBookmark, LuSearch } from "react-icons/lu";
+import { LuLogIn, LuLayoutDashboard, LuPenSquare, LuChevronDown, LuBookmark, LuSearch, LuUser } from "react-icons/lu";
 import { HiOutlineBars3BottomRight, HiXMark } from "react-icons/hi2";
 import { MdLogout } from "react-icons/md";
 import useAuth from "../../../Components/Hooks/useAuth";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUsers } from "../../Redux/Users/userSlice";
 import InstantSearchModal from "../../../Components/Search/InstantSearchModal";
+import NotificationDropdown from "../../../Components/Notification/NotificationDropdown";
 
 const Navbar = () => {
   const { logOut, user } = useAuth();
@@ -184,13 +185,16 @@ const Navbar = () => {
             )}
 
             {user && (
-              <Link
-                to="/dashboard/bookmarks"
-                className="hidden sm:inline-flex p-2 rounded-full border border-slate-200/80 bg-white hover:bg-brand-light/50 text-slate-700 hover:text-brand transition-colors"
-                title="My Reading List / Bookmarks"
-              >
-                <LuBookmark className="text-base" />
-              </Link>
+              <>
+                <Link
+                  to="/dashboard/bookmarks"
+                  className="hidden sm:inline-flex p-2 rounded-full border border-slate-200/80 bg-white hover:bg-brand-light/50 text-slate-700 hover:text-brand transition-colors"
+                  title="My Reading List / Bookmarks"
+                >
+                  <LuBookmark className="text-base" />
+                </Link>
+                <NotificationDropdown />
+              </>
             )}
 
             {user ? (
@@ -242,6 +246,14 @@ const Navbar = () => {
                     </div>
 
                     <div className="py-1">
+                      <Link
+                        to={`/author/${user.email}`}
+                        onClick={() => setIsProfileOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand transition-colors"
+                      >
+                        <LuUser className="text-base text-slate-400" />
+                        My Public Profile
+                      </Link>
                       <Link
                         to="/dashboard/bookmarks"
                         onClick={() => setIsProfileOpen(false)}
@@ -313,6 +325,7 @@ const Navbar = () => {
             >
               <LuSearch className="w-5 h-5 text-slate-800" />
             </button>
+            {user && <NotificationDropdown />}
             {user && (
               <div className="w-8 h-8 rounded-full bg-brand text-white font-bold text-xs flex items-center justify-center">
                 {(user.displayName || user.email || "U").charAt(0).toUpperCase()}

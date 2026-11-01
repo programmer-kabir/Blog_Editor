@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from "react";
+import React, { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import JoditEditor from "jodit-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -19,6 +19,12 @@ import {
   LuAlertCircle,
   LuTag,
   LuPlus,
+  LuCloud,
+  LuSave,
+  LuRotateCcw,
+  LuTrash2,
+  LuSparkles,
+  LuBookOpen,
 } from "react-icons/lu";
 
 const fallbackCategories = [
@@ -69,15 +75,225 @@ const AddBlog = () => {
   const [imageFile, setImageFile] = useState(null);
   const [isPublishing, setIsPublishing] = useState(false);
 
+  const [saveStatus, setSaveStatus] = useState("idle"); // 'idle' | 'saving' | 'saved' | 'error'
+  const [lastSavedTime, setLastSavedTime] = useState(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [detectedDraft, setDetectedDraft] = useState(null);
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+
+  // Series & Collection State
+  const [isSeries, setIsSeries] = useState(false);
+  const [seriesName, setSeriesName] = useState("");
+  const [seriesPart, setSeriesPart] = useState(1);
+  const [availableSeries, setAvailableSeries] = useState([]);
+
+  useEffect(() => {
+    axios
+      .get(`${import.meta.env.VITE_API_URL}/series`)
+      .then((res) => {
+        if (Array.isArray(res.data)) {
+          setAvailableSeries(res.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const {
     handleSubmit,
     register,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm({
     defaultValues: {
       title: "",
     },
   });
+
+  const currentTitle = watch("title");
+
+  // Save Draft Logic (Hybrid: LocalStorage + Backend Cloud)
+  const saveDraft = useCallback(
+    async (manual = false) => {
+      if (!user?.email) return;
+      const titleVal = watch("title");
+      const hasContent =
+        content && content.trim() !== "<p><br></p>" && content.trim() !== "";
+      const hasTitle = titleVal && titleVal.trim() !== "";
+
+      if (!hasTitle && !hasContent) {
+        if (manual) toast.error("Write a title or content before saving draft");
+        return;
+      }
+
+      setIsSavingDraft(true);
+      setSaveStatus("saving");
+
+      const draftPayload = {
+        email: user.email,
+        title: titleVal || "",
+        category: selectedCategory,
+        tags,
+        content: content || "",
+        previewImage,
+        series:
+          isSeries && seriesName.trim()
+            ? { name: seriesName.trim(), part: Number(seriesPart) || 1 }
+            : null,
+        updatedAt: new Date().toISOString(),
+      };
+
+      try {
+        // 1. Save to LocalStorage
+        localStorage.setItem(
+          `blogger_draft_${user.email}`,
+          JSON.stringify(draftPayload)
+        );
+
+        // 2. Save to Cloud Backend
+        await axios.put(
+          `${import.meta.env.VITE_API_URL}/drafts`,
+          draftPayload
+        );
+
+        const timeStr = new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        setSaveStatus("saved");
+        setLastSavedTime(timeStr);
+
+        if (manual) {
+          toast.success("Draft saved to cloud & local storage! 💾");
+        }
+      } catch (err) {
+        console.error("Auto-save error:", err);
+        setSaveStatus("error");
+        if (manual) {
+          toast.error("Cloud save failed. Saved locally.");
+        }
+      } finally {
+        setIsSavingDraft(false);
+      }
+    },
+    [user?.email, watch, content, selectedCategory, tags, previewImage, isSeries, seriesName, seriesPart]
+  );
+
+  // Auto-Save background timer: every 30 seconds
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const interval = setInterval(() => {
+      const titleVal = watch("title");
+      const hasContent =
+        content && content.trim() !== "<p><br></p>" && content.trim() !== "";
+      const hasTitle = titleVal && titleVal.trim() !== "";
+
+      if (hasTitle || hasContent) {
+        saveDraft(false);
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [saveDraft, user?.email, watch, content]);
+
+  // Check for unsaved draft on mount
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const checkDraft = async () => {
+      try {
+        let localDraft = null;
+        const localRaw = localStorage.getItem(`blogger_draft_${user.email}`);
+        if (localRaw) {
+          try {
+            localDraft = JSON.parse(localRaw);
+          } catch (e) {}
+        }
+
+        let cloudDraft = null;
+        try {
+          const res = await axios.get(
+            `${import.meta.env.VITE_API_URL}/drafts?email=${encodeURIComponent(
+              user.email
+            )}`
+          );
+          cloudDraft = res.data?.draft;
+        } catch (e) {}
+
+        let bestDraft = null;
+        if (localDraft && cloudDraft) {
+          const localTime = new Date(localDraft.updatedAt || 0).getTime();
+          const cloudTime = new Date(cloudDraft.updatedAt || 0).getTime();
+          bestDraft = localTime >= cloudTime ? localDraft : cloudDraft;
+        } else {
+          bestDraft = localDraft || cloudDraft;
+        }
+
+        if (
+          bestDraft &&
+          (bestDraft.title?.trim() ||
+            (bestDraft.content && bestDraft.content !== "<p><br></p>"))
+        ) {
+          setDetectedDraft(bestDraft);
+          setShowRecoveryModal(true);
+        }
+      } catch (err) {
+        console.error("Failed to check draft:", err);
+      }
+    };
+
+    checkDraft();
+  }, [user?.email]);
+
+  // Restore Draft Action
+  const handleRestoreDraft = () => {
+    if (!detectedDraft) return;
+
+    if (detectedDraft.title) {
+      setValue("title", detectedDraft.title);
+    }
+    if (detectedDraft.content) {
+      setContent(detectedDraft.content);
+    }
+    if (detectedDraft.category) {
+      const match =
+        activeCategories.find((c) => c.id === detectedDraft.category.id) ||
+        detectedDraft.category;
+      setSelectedCategory(match);
+    }
+    if (Array.isArray(detectedDraft.tags)) {
+      setTags(detectedDraft.tags);
+    }
+    if (detectedDraft.previewImage) {
+      setPreviewImage(detectedDraft.previewImage);
+    }
+    if (detectedDraft.series?.name) {
+      setIsSeries(true);
+      setSeriesName(detectedDraft.series.name);
+      setSeriesPart(detectedDraft.series.part || 1);
+    }
+
+    setShowRecoveryModal(false);
+    toast.success("Draft restored to editor! ✨");
+  };
+
+  // Discard Draft Action
+  const handleDiscardDraft = async () => {
+    if (user?.email) {
+      localStorage.removeItem(`blogger_draft_${user.email}`);
+      try {
+        await axios.delete(
+          `${import.meta.env.VITE_API_URL}/drafts?email=${encodeURIComponent(
+            user.email
+          )}`
+        );
+      } catch (err) {}
+    }
+    setDetectedDraft(null);
+    setShowRecoveryModal(false);
+    toast("Draft discarded. Starting fresh canvas.");
+  };
 
   const wordCount = useMemo(() => {
     const text = (content || "").replace(/<[^>]+>/g, " ").trim();
@@ -241,6 +457,13 @@ const AddBlog = () => {
         date: today,
         email: user.email,
         status: "pending",
+        series:
+          isSeries && seriesName.trim()
+            ? {
+                name: seriesName.trim(),
+                part: Number(seriesPart) || 1,
+              }
+            : null,
         like: {
           count: 0,
           email: [],
@@ -254,6 +477,18 @@ const AddBlog = () => {
       );
 
       if (response.data?.insertedId) {
+        // Clear saved drafts upon successful publishing
+        if (user?.email) {
+          localStorage.removeItem(`blogger_draft_${user.email}`);
+          try {
+            await axios.delete(
+              `${import.meta.env.VITE_API_URL}/drafts?email=${encodeURIComponent(
+                user.email
+              )}`
+            );
+          } catch (de) {}
+        }
+
         toast.success("Story submitted! Sent to editorial queue for approval.");
         navigate("../blogger/show-blog");
       }
@@ -295,6 +530,36 @@ const AddBlog = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Live Auto-Save Status Indicator */}
+          {saveStatus === "saving" ? (
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold animate-pulse">
+              <LuCloud className="text-sm" />
+              <span>Saving draft...</span>
+            </div>
+          ) : lastSavedTime ? (
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
+              <LuCheckCircle2 className="text-sm" />
+              <span>Saved to cloud at {lastSavedTime}</span>
+            </div>
+          ) : (
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-xs font-medium">
+              <LuCloud className="text-sm" />
+              <span>Auto-save active (30s)</span>
+            </div>
+          )}
+
+          {/* Manual Save Draft Button */}
+          <button
+            type="button"
+            onClick={() => saveDraft(true)}
+            disabled={isSavingDraft || isPublishing}
+            className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-xs hover:border-brand/40"
+            title="Save draft immediately to cloud and local storage"
+          >
+            <LuSave className="text-sm text-brand" />
+            <span>{isSavingDraft ? "Saving..." : "Save Draft"}</span>
+          </button>
+
           <button
             type="button"
             onClick={handleSubmit(onSubmit)}
@@ -632,6 +897,102 @@ const AddBlog = () => {
             </div>
           </div>
 
+          {/* Box 4.5: Series & Collection */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <LuBookOpen className="text-brand text-sm" />
+                <span>Series & Collection</span>
+              </label>
+
+              {/* Interactive Toggle Switch */}
+              <button
+                type="button"
+                onClick={() => setIsSeries(!isSeries)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  isSeries ? "bg-brand" : "bg-slate-200"
+                }`}
+                title="Toggle series membership"
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    isSeries ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            <p className="text-[11px] text-slate-400 leading-tight">
+              Group multi-part tutorials or chapter guides into a coherent reader journey.
+            </p>
+
+            {isSeries && (
+              <div className="space-y-3 pt-2 border-t border-slate-100 animate-in fade-in duration-150">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Series Name / Title
+                  </label>
+                  <input
+                    type="text"
+                    value={seriesName}
+                    onChange={(e) => setSeriesName(e.target.value)}
+                    placeholder="e.g. Full-Stack React & Node Mastery"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand bg-slate-50/50 placeholder:text-slate-400 font-medium"
+                  />
+
+                  {/* Existing Series Quick Picks if any */}
+                  {availableSeries.length > 0 && (
+                    <div className="mt-2.5">
+                      <span className="text-[10px] font-medium text-slate-400 block mb-1">
+                        Or pick an existing series:
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {availableSeries.map((s) => (
+                          <button
+                            key={s.name}
+                            type="button"
+                            onClick={() => {
+                              setSeriesName(s.name);
+                              setSeriesPart((s.totalParts || 0) + 1);
+                            }}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-colors ${
+                              seriesName === s.name
+                                ? "bg-brand text-white shadow-xs"
+                                : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                            }`}
+                          >
+                            📚 {s.name} (Pt {s.totalParts + 1})
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Chapter / Part Number
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={seriesPart}
+                      onChange={(e) =>
+                        setSeriesPart(Math.max(1, parseInt(e.target.value) || 1))
+                      }
+                      className="w-20 px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand bg-slate-50/50 font-bold"
+                    />
+                    <span className="text-xs text-slate-500 font-medium">
+                      Part {seriesPart} of this series
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Box 5: Author Info */}
           <div className="p-4 rounded-2xl bg-slate-100/70 border border-slate-200/60 flex items-center gap-3">
             {user?.photoURL ? (
@@ -658,6 +1019,98 @@ const AddBlog = () => {
           </div>
         </div>
       </div>
+
+      {/* Draft Recovery Modal */}
+      {showRecoveryModal && detectedDraft && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div
+            className="w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-brand-light text-brand flex items-center justify-center text-2xl shadow-xs">
+                  📝
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base">
+                    Unsaved Draft Detected!
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Saved{" "}
+                    {detectedDraft.updatedAt
+                      ? new Date(detectedDraft.updatedAt).toLocaleDateString() +
+                        " at " +
+                        new Date(detectedDraft.updatedAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "recently"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRecoveryModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+              >
+                <LuX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-brand">
+                Draft Preview
+              </span>
+              <h4 className="text-sm font-bold text-slate-900 line-clamp-1">
+                {detectedDraft.title || "(Untitled Story Draft)"}
+              </h4>
+              <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
+                {(detectedDraft.content || "")
+                  .replace(/<[^>]+>/g, " ")
+                  .trim() || "No written body content."}
+              </p>
+              {detectedDraft.category && (
+                <div className="pt-2 flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-md text-[10px] font-semibold bg-white border border-slate-200 text-slate-700">
+                    {detectedDraft.category.icon} {detectedDraft.category.label}
+                  </span>
+                  {detectedDraft.tags?.length > 0 && (
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      #{detectedDraft.tags.join(" #")}
+                    </span>
+                  )}
+                  {detectedDraft.series?.name && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 border border-amber-200 text-amber-800">
+                      📚 {detectedDraft.series.name} • Part {detectedDraft.series.part || 1}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <LuTrash2 className="text-sm" />
+                <span>Discard & Start Fresh</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleRestoreDraft}
+                className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-brand hover:bg-brand-dark transition-all shadow-md hover:shadow-brand flex items-center justify-center gap-2"
+              >
+                <LuRotateCcw className="text-sm" />
+                <span>Restore Draft</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

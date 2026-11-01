@@ -8,7 +8,7 @@ import { IoBicycleOutline, IoHomeOutline } from "react-icons/io5";
 import { RiGraduationCapLine } from "react-icons/ri";
 import { FaRegLifeRing } from "react-icons/fa6";
 import { PiBowlFoodLight, PiDressThin } from "react-icons/pi";
-import { LuLayoutDashboard, LuPenSquare, LuSearch } from "react-icons/lu";
+import { LuLayoutDashboard, LuPenSquare, LuSearch, LuBookmark } from "react-icons/lu";
 import { HiOutlineBars3BottomRight, HiXMark } from "react-icons/hi2";
 import { MdLogout } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
@@ -18,6 +18,7 @@ import { fetchCategories } from "../Redux/Categories/categorySlice";
 import useAuth from "../../Components/Hooks/useAuth";
 import Loader from "../../Components/Loader/Loader";
 import InstantSearchModal from "../../Components/Search/InstantSearchModal";
+import NotificationDropdown from "../../Components/Notification/NotificationDropdown";
 
 const fallbackCategoryData = [
   { title: "Programming", icon: "💻", link: "programming" },
@@ -296,6 +297,19 @@ const Blogs = () => {
                 <LuLayoutDashboard className="text-xs text-brand" />
                 Dashboard
               </NavLink>
+            )}
+
+            {user && (
+              <>
+                <Link
+                  to="/dashboard/bookmarks"
+                  className="hidden sm:inline-flex p-2 rounded-full border border-slate-200 bg-white hover:bg-brand-light/50 text-slate-700 hover:text-brand transition-colors"
+                  title="My Bookmarks"
+                >
+                  <LuBookmark className="text-sm" />
+                </Link>
+                <NotificationDropdown />
+              </>
             )}
 
             {user ? (

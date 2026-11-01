@@ -7,6 +7,11 @@ export default defineConfig({
   server: {
     port: 5180,
     strictPort: true,
+    proxy: {
+      '/sitemap.xml': 'http://localhost:3000',
+      '/rss.xml': 'http://localhost:3000',
+      '/feed.xml': 'http://localhost:3000',
+    },
   },
   build: {
     rollupOptions: {
