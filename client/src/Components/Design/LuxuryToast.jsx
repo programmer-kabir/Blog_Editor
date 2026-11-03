@@ -1,5 +1,235 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { toast, resolveValue } from "react-hot-toast";
+
+/**
+ * Intelligent Toast Message Formatter
+ * Produces crisp, luxury Title + Subtitle pairs in natural modern English
+ * e.g. "Signed in successfully!" -> Title: "Login Successful! 🎉", Subtitle: "Welcome back to your creator studio."
+ */
+const formatToastContent = (rawMessage, type) => {
+  const isError = type === "error";
+  const isLoading = type === "loading";
+  const isSuccess = type === "success" || (!isError && !isLoading);
+
+  // If already an object with explicit title/message
+  if (typeof rawMessage === "object" && rawMessage !== null && !React.isValidElement(rawMessage)) {
+    return {
+      title: rawMessage.title || (isSuccess ? "Success! 🎉" : "Notice"),
+      subtitle: rawMessage.message || rawMessage.description || "",
+      badgeLeft: rawMessage.badgeLeft || "BlogEditor Studio",
+      badgeRight: rawMessage.badgeRight || (isSuccess ? "✓ Verified" : isError ? "✕ Failed" : "⏳ Pending"),
+    };
+  }
+
+  const str = String(rawMessage || "").trim();
+
+  // 1. Sign In / Login / Welcome Back
+  if (/welcome\s*back/i.test(str) || /sign(ed)?\s*in|log(ged)?\s*in|login/i.test(str)) {
+    if (isError) {
+      if (/please\s*sign\s*in|must\s*be\s*logged/i.test(str)) {
+        return {
+          title: "Sign In Required 🔒",
+          subtitle: "Please sign in to continue with this action.",
+          badgeLeft: "Authentication",
+          badgeRight: "✕ Required",
+        };
+      }
+      return {
+        title: "Login Failed ✕",
+        subtitle: str || "Invalid email or password. Please try again.",
+        badgeLeft: "Security",
+        badgeRight: "✕ Error",
+      };
+    }
+
+    if (/welcome\s*back/i.test(str)) {
+      return {
+        title: "Welcome Back! 👋",
+        subtitle: str,
+        badgeLeft: "Creator Auth",
+        badgeRight: "✓ Verified",
+      };
+    }
+
+    return {
+      title: "Login Successful! 🎉",
+      subtitle: "Welcome back to your creator studio.",
+      badgeLeft: "Creator Auth",
+      badgeRight: "✓ Verified",
+    };
+  }
+
+  // 2. Sign Up / Registration
+  if (/sign(ed)?\s*up|account\s*created|registered/i.test(str)) {
+    if (isError) {
+      return {
+        title: "Sign Up Failed ✕",
+        subtitle: str || "Could not complete registration. Please try again.",
+        badgeLeft: "Account",
+        badgeRight: "✕ Error",
+      };
+    }
+    return {
+      title: "Account Created! 🚀",
+      subtitle: "Welcome to the BlogEditor community.",
+      badgeLeft: "New Creator",
+      badgeRight: "✓ Registered",
+    };
+  }
+
+  // 3. Logout
+  if (/log(ged)?\s*out|sign(ed)?\s*out/i.test(str)) {
+    return {
+      title: "Signed Out 👋",
+      subtitle: "You have been safely signed out.",
+      badgeLeft: "Session",
+      badgeRight: "✓ Closed",
+    };
+  }
+
+  // 4. Copied / Clipboard
+  if (/cop(y|ied)/i.test(str)) {
+    return {
+      title: "Link Copied! 📋",
+      subtitle: "Article URL copied to your clipboard.",
+      badgeLeft: "Clipboard",
+      badgeRight: "✓ Copied",
+    };
+  }
+
+  // 5. Comments & Discussions
+  if (/comment|reply|discussion/i.test(str)) {
+    if (isError) {
+      return {
+        title: "Action Failed ✕",
+        subtitle: str || "Failed to update discussion.",
+        badgeLeft: "Discussion",
+        badgeRight: "✕ Error",
+      };
+    }
+    if (/delet|remov/i.test(str)) {
+      return {
+        title: "Comment Removed 🗑️",
+        subtitle: "The comment was removed from discussion.",
+        badgeLeft: "Discussion",
+        badgeRight: "✓ Removed",
+      };
+    }
+    return {
+      title: "Comment Published! 💬",
+      subtitle: "Your reply was added to the thread.",
+      badgeLeft: "Discussion",
+      badgeRight: "✓ Published",
+    };
+  }
+
+  // 6. Bookmarks & Reading List
+  if (/bookmark|reading\s*list/i.test(str)) {
+    if (isError) {
+      return {
+        title: "Bookmark Failed ✕",
+        subtitle: str || "Could not update your reading list.",
+        badgeLeft: "Library",
+        badgeRight: "✕ Error",
+      };
+    }
+    return {
+      title: "Reading List Updated 🔖",
+      subtitle: "Story saved to your private collection.",
+      badgeLeft: "Library",
+      badgeRight: "✓ Saved",
+    };
+  }
+
+  // 7. Likes / Reactions / Claps
+  if (/like|clap|applaud|react/i.test(str)) {
+    if (isError) {
+      return {
+        title: "Reaction Failed ✕",
+        subtitle: str || "Could not record your reaction.",
+        badgeLeft: "Reaction",
+        badgeRight: "✕ Error",
+      };
+    }
+    return {
+      title: "Reaction Received! ❤️",
+      subtitle: "Thanks for supporting this story.",
+      badgeLeft: "Engagement",
+      badgeRight: "✓ Recorded",
+    };
+  }
+
+  // 8. Blogs / Drafts / Stories
+  if (/\bblog\b|\bdraft\b|\bstory\b|\bpost\b/i.test(str)) {
+    if (isError) {
+      return {
+        title: "Action Failed ✕",
+        subtitle: str || "Failed to complete blog action.",
+        badgeLeft: "Creator Studio",
+        badgeRight: "✕ Error",
+      };
+    }
+    if (/draft/i.test(str)) {
+      return {
+        title: "Draft Saved 💾",
+        subtitle: "Your progress is backed up in the cloud.",
+        badgeLeft: "Auto-Save",
+        badgeRight: "✓ Synced",
+      };
+    }
+    if (/update|edit|saved/i.test(str)) {
+      return {
+        title: "Changes Saved! ✨",
+        subtitle: "Your blog post was successfully updated.",
+        badgeLeft: "Creator Studio",
+        badgeRight: "✓ Updated",
+      };
+    }
+    return {
+      title: "Blog Published! ✍️",
+      subtitle: "Your story has been submitted for review.",
+      badgeLeft: "Creator Studio",
+      badgeRight: "✓ Submitted",
+    };
+  }
+
+  // 9. Generic Fallbacks
+  if (isError) {
+    return {
+      title: "Something Went Wrong ✕",
+      subtitle: str || "An unexpected error occurred. Please try again.",
+      badgeLeft: "System Alert",
+      badgeRight: "✕ Error",
+    };
+  }
+
+  if (isLoading) {
+    return {
+      title: "Processing Request ⏳",
+      subtitle: str || "Please wait a moment...",
+      badgeLeft: "System",
+      badgeRight: "⏳ In Progress",
+    };
+  }
+
+  // Short message (<= 4 words) can become the Title directly!
+  const words = str.split(/\s+/).filter(Boolean);
+  if (words.length > 0 && words.length <= 4) {
+    return {
+      title: `${str} 🎉`,
+      subtitle: "Action completed successfully.",
+      badgeLeft: "BlogEditor",
+      badgeRight: "✓ Completed",
+    };
+  }
+
+  return {
+    title: "Action Successful! 🎉",
+    subtitle: str,
+    badgeLeft: "BlogEditor",
+    badgeRight: "✓ Completed",
+  };
+};
 
 /**
  * Luxury Card Toast Component (White Mood / Light Theme)
@@ -13,38 +243,7 @@ const LuxuryToast = ({ t }) => {
   const isLoading = t.type === "loading";
   const isSuccess = t.type === "success" || (!isError && !isLoading);
 
-  // Parse title and subtitle
-  let title = "";
-  let messageText = "";
-  let badgeLeft = "BlogEditor Studio";
-  let badgeRight = isSuccess ? "✓ সম্পন্ন" : isError ? "✕ সতর্কবার্তা" : "⏳ প্রসেসিং";
-
-  if (typeof resolved === "object" && resolved !== null && !React.isValidElement(resolved)) {
-    title = resolved.title || "";
-    messageText = resolved.message || resolved.description || "";
-    if (resolved.badgeLeft) badgeLeft = resolved.badgeLeft;
-    if (resolved.badgeRight) badgeRight = resolved.badgeRight;
-  } else if (typeof resolved === "string") {
-    // Check if the string has a colon or newline separating title and body
-    if (resolved.includes(":\n")) {
-      const parts = resolved.split(":\n");
-      title = parts[0];
-      messageText = parts.slice(1).join(":\n");
-    } else if (resolved.includes(": ")) {
-      const parts = resolved.split(": ");
-      title = parts[0];
-      messageText = parts.slice(1).join(": ");
-    } else {
-      // Default contextual title based on type
-      if (isSuccess) title = "অ্যাকশন সফল হয়েছে! 🎉";
-      else if (isError) title = "একটি সমস্যা হয়েছে! ⚠️";
-      else if (isLoading) title = "প্রসেস হচ্ছে...";
-      else title = "নোটিফিকেশন";
-      messageText = resolved;
-    }
-  } else {
-    messageText = resolved;
-  }
+  const { title, subtitle, badgeLeft, badgeRight } = formatToastContent(resolved, t.type);
 
   return (
     <div
@@ -89,11 +288,7 @@ const LuxuryToast = ({ t }) => {
 
             {isLoading && (
               <div className="w-11 h-11 rounded-xl bg-indigo-50 border-[1.5px] border-indigo-300/80 flex items-center justify-center text-indigo-600 shadow-[0_2px_8px_rgba(99,102,241,0.15)]">
-                <svg
-                  className="w-5 h-5 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle
                     className="opacity-25"
                     cx="12"
@@ -114,14 +309,14 @@ const LuxuryToast = ({ t }) => {
 
           {/* Middle Text Area */}
           <div className="flex-1 min-w-0 pr-1">
-            {title && (
-              <h4 className="text-[14.5px] font-bold text-slate-900 tracking-tight leading-snug">
-                {title}
-              </h4>
+            <h4 className="text-[14.5px] font-bold text-slate-900 tracking-tight leading-snug">
+              {title}
+            </h4>
+            {subtitle && (
+              <p className="text-[12.8px] text-slate-600 font-normal leading-relaxed mt-0.5 break-words">
+                {subtitle}
+              </p>
             )}
-            <p className="text-[12.8px] text-slate-600 font-normal leading-relaxed mt-0.5 break-words">
-              {messageText}
-            </p>
           </div>
 
           {/* Right Close Button */}
