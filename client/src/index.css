@@ -86,3 +86,34 @@
 .text-primary {
   color: #F50400;
 }
+
+
+/* Luxury Toast Notification Styling */
+.luxury-toast {
+  position: relative;
+  overflow: hidden !important;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  cursor: default;
+}
+
+.luxury-toast:hover {
+  transform: translateY(-2px) scale(1.015) !important;
+  box-shadow: 0 25px 55px -10px rgba(0, 0, 0, 0.7), 0 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Top specular highlight shine line */
+.luxury-toast::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.35) 50%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Toast message text formatting */
+.luxury-toast > div {
+  line-height: 1.5;
+}
