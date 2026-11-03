@@ -117,3 +117,14 @@
 .luxury-toast > div {
   line-height: 1.5;
 }
+
+
+/* Toast progress countdown animation */
+@keyframes shrinkWidth {
+  0% {
+    width: 100%;
+  }
+  100% {
+    width: 0%;
+  }
+}
