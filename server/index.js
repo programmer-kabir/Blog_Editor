@@ -2,7 +2,7 @@ const dns = require("dns");
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 const express = require("express");
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 const cors = require("cors");
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
@@ -194,6 +194,42 @@ async function run() {
     app.get("/blogs", async (req, res) => {
       const result = await blogsCollection.find().toArray();
       res.send(result);
+    });
+
+    // Get single blog by ID
+    app.get("/blogs/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const blog = await blogsCollection.findOne({ _id: new ObjectId(id) });
+        if (!blog) return res.status(404).send({ message: "Blog not found" });
+        res.send(blog);
+      } catch (err) {
+        res.status(500).send({ message: "Invalid ID or server error" });
+      }
+    });
+
+    // Edit blog by ID (blogger)
+    app.patch("/blogs/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { title, category, tags, content, photo, status } = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            title,
+            category,
+            tags,
+            content,
+            photo,
+            status: status || "pending",
+            updatedAt: new Date().toISOString(),
+          },
+        };
+        const result = await blogsCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ message: "Failed to update blog" });
+      }
     });
 
     app.post("/blogs", async (req, res) => {
@@ -1586,4 +1622,6 @@ app.get("/", (req, res) => {
   res.send("Server is Ok!");
 });
 
-app.listen(port, () => {});
+app.listen(port, () => {
+  console.log("Server listening on port " + port);
+});

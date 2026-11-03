@@ -20,6 +20,7 @@ const AdminBoard = lazy(() => import("../Pages/Dashboard/Admin/AdminBoard"));
 const Blogger = lazy(() => import("../Pages/Dashboard/Blogger/Blogger"));
 const AddBlog = lazy(() => import("../Pages/Dashboard/Blogger/AddBlog"));
 const ShowBlog = lazy(() => import("../Pages/Dashboard/Blogger/ShowBlog"));
+const EditBlog = lazy(() => import("../Pages/Dashboard/Blogger/EditBlog"));
 const AllBloggers = lazy(() => import("../Pages/Dashboard/Admin/AllBloggers"));
 const AllUser = lazy(() => import("../Pages/Dashboard/Admin/AllUser"));
 const AdminBlogs = lazy(() => import("../Pages/Dashboard/Admin/AdminBlogs"));
@@ -176,6 +177,14 @@ const router = createBrowserRouter([
         element: (
           <BloggerRoute>
             <ShowBlog />
+          </BloggerRoute>
+        ),
+      },
+      {
+        path: "blogger/edit-blog/:id",
+        element: (
+          <BloggerRoute>
+            <EditBlog />
           </BloggerRoute>
         ),
       },

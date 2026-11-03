@@ -9,6 +9,7 @@ import {
   LuCheckCircle2,
   LuX,
   LuMessageSquare,
+  LuPenSquare,
 } from "react-icons/lu";
 
 const AllBlogCard = ({ data, link }) => {
@@ -132,6 +133,13 @@ const AllBlogCard = ({ data, link }) => {
             </button>
           )}
 
+          <Link
+            to={`/dashboard/blogger/edit-blog/${data?._id}`}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-brand hover:bg-brand-dark border border-brand transition-colors"
+          >
+            <LuPenSquare className="text-xs" />
+            <span>Edit</span>
+          </Link>
           <Link
             to={targetLink}
             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-brand bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors"

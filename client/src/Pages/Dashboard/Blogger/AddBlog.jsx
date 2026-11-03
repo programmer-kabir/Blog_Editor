@@ -7,6 +7,8 @@ import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCategories } from "../../Redux/Categories/categorySlice";
 import useAuth from "../../../Components/Hooks/useAuth";
+import "./AddBlog.css";
+import { handleSmartPaste, cleanHtmlStyles } from "../../../utils/pasteFormatter";
 import {
   LuUploadCloud,
   LuX,
@@ -302,6 +304,13 @@ const AddBlog = () => {
 
   const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 
+  const handleFixColors = () => {
+    if (!content) return;
+    const cleaned = cleanHtmlStyles(content);
+    setContent(cleaned);
+    toast.success("Text styles & high-contrast colors restored! ✨");
+  };
+
   const joditConfig = useMemo(
     () => ({
       readonly: false,
@@ -327,17 +336,24 @@ const AddBlog = () => {
         "fontsize",
         "paragraph",
         "|",
+        "brush",
+        "copyformat",
+        "|",
         "image",
         "link",
         "table",
         "|",
         "align",
+        "indent",
+        "outdent",
+        "|",
         "undo",
         "redo",
         "|",
         "hr",
         "eraser",
         "fullsize",
+        "source",
       ],
       showCharsCounter: false,
       showWordsCounter: false,
@@ -564,6 +580,7 @@ const AddBlog = () => {
             type="button"
             onClick={handleSubmit(onSubmit)}
             disabled={isPublishing}
+            id="submit-story-btn"
             className="px-6 py-2.5 rounded-full font-bold text-xs text-white bg-brand hover:bg-brand-dark transition-all duration-200 shadow-md hover:shadow-brand flex items-center gap-2 disabled:opacity-50"
           >
             {isPublishing ? "Publishing Story..." : "Submit for Approval"}
@@ -767,7 +784,7 @@ const AddBlog = () => {
             </label>
 
             <div
-              onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+              id="category-dropdown-trigger" onClick={() => setIsCategoryOpen(!isCategoryOpen)}
               className="w-full flex items-center justify-between p-3 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 cursor-pointer transition-colors"
             >
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
@@ -792,6 +809,7 @@ const AddBlog = () => {
                   return (
                     <div
                       key={cat.id}
+                      id={`cat-option-${cat.id}`}
                       onClick={() => {
                         setSelectedCategory(cat);
                         setIsCategoryOpen(false);
