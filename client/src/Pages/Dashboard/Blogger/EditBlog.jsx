@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchCategories } from "../../Redux/Categories/categorySlice";
 import useAuth from "../../../Components/Hooks/useAuth";
 import "./AddBlog.css";
-import { handleSmartPaste, cleanHtmlStyles } from "../../../utils/pasteFormatter";
+import { handleSmartPaste, cleanHtmlStyles } from "../../../Utils/pasteFormatter";
 import {
   LuUploadCloud,
   LuX,
